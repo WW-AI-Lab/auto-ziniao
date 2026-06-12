@@ -1,0 +1,34 @@
+{
+  "id": "webadmin_selftest",
+  "name": "webadmin自测流程",
+  "version": 4,
+  "enabled": false,
+  "description": "webadmin 验证专用：仅 print/sleep 动作，不调用 ZClaw bridge。验证完成后删除。",
+  "params": {
+    "greeting": "hello"
+  },
+  "steps": [
+    {
+      "id": "say",
+      "action": "print",
+      "message": "selftest: ${params.greeting}"
+    },
+    {
+      "id": "wait",
+      "action": "sleep",
+      "seconds": 10
+    },
+    {
+      "id": "done",
+      "action": "print",
+      "message": "selftest done"
+    }
+  ],
+  "on_success": {
+    "close_store": false
+  },
+  "on_fail_final": {
+    "close_store": false,
+    "heal": false
+  }
+}

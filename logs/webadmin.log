@@ -1,0 +1,17 @@
+2026-06-12 19:40:45,963 INFO webadmin.scheduler 调度器线程启动 (tick=15s)
+2026-06-12 19:40:45,963 INFO webadmin webadmin 启动完成
+2026-06-12 19:59:02,526 INFO webadmin.scheduler 调度器线程启动 (tick=15s)
+2026-06-12 19:59:02,526 INFO webadmin webadmin 启动完成
+2026-06-12 20:03:02,704 INFO webadmin.scheduler 调度触发: e2e测试 (flow=webadmin_selftest)
+2026-06-12 20:03:12,861 INFO webadmin.scheduler 调度完成: e2e测试 -> success (10153ms)
+2026-06-12 20:04:02,753 INFO webadmin.scheduler 调度触发: e2e测试 (flow=webadmin_selftest)
+2026-06-12 20:04:12,929 INFO webadmin.scheduler 调度完成: e2e测试 -> success (10173ms)
+2026-06-12 20:05:02,815 INFO webadmin.scheduler 调度触发: e2e测试 (flow=webadmin_selftest)
+2026-06-12 20:05:09,360 INFO webadmin.scheduler 调度器线程退出
+2026-06-12 20:07:03,934 INFO webadmin.scheduler 调度器线程启动 (tick=15s)
+2026-06-12 20:07:03,934 INFO webadmin webadmin 启动完成
+2026-06-12 20:09:11,803 INFO webadmin.chat gateway 探测 HTTP 404
+2026-06-12 20:09:11,803 INFO webadmin.chat gateway chat completions 可用性: False
+2026-06-12 20:09:11,804 INFO webadmin.chat CLI chat: openclaw agent --session-key ziniao-webadmin:a089bc2aeb56 ...
+2026-06-12 20:13:01,811 INFO webadmin.chat CLI chat: openclaw agent --session-key ziniao-webadmin:1ad9afbb1b6e ...
+2026-06-12 20:22:24,237 INFO webadmin.scheduler 调度器线程退出

@@ -1,0 +1,4 @@
+{
+  "_comment": "自愈沉淀库：已解决的问题记录在 issues 数组。流程失败时引擎先匹配这里（pattern 子串匹配错误信息，或 flow_id+step_id 精确匹配），命中已解决问题则不再触发 Agent（0 tokens）。",
+  "issues": []
+}

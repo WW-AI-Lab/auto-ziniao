@@ -1,0 +1,70 @@
+{
+  "id": "inventory_check",
+  "name": "商品列表检查",
+  "version": 3,
+  "enabled": true,
+  "schedule": "0 10 * * *",
+  "description": "检查 Amazon 商品库存状态，提取商品数量、在售状态、价格信息",
+  "retry": { "maxAttempts": 2, "delayMs": 5000 },
+  "params": {
+    "store_name": "",
+    "_comment": "store_name 为空时自动使用店铺列表中的第一个店铺"
+  },
+  "steps": [
+    {
+      "id": "list_stores",
+      "tool": "list_stores",
+      "save": "stores",
+      "on_fail": { "action": "abort", "context": "bridge_down" }
+    },
+    {
+      "id": "open_store",
+      "tool": "open_store",
+      "store_selector": "first",
+      "save": "store",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "nav_inventory",
+      "tool": "visit_page",
+      "args": {
+        "url": "https://sellercentral.amazon.com/hz/inventory/dashboard",
+        "waitUntil": "domcontentloaded",
+        "timeoutMs": 30000
+      },
+      "on_fail": { "action": "retry", "delayMs": 5000, "maxAttempts": 2, "context": "nav_failed" }
+    },
+    {
+      "id": "wait_page",
+      "action": "sleep",
+      "seconds": 4
+    },
+    {
+      "id": "extract_inventory",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/extract_inventory.js",
+        "returnByValue": true
+      },
+      "save": "inventory_data",
+      "on_fail": { "action": "heal", "context": "extract_failed" },
+      "validate": { "not_empty": true, "require_fields": ["url"] }
+    },
+    {
+      "id": "save_inventory",
+      "action": "save_json",
+      "data": "${inventory_data}",
+      "filename": "inventory_${date}.json"
+    },
+    {
+      "id": "close_store",
+      "tool": "close_store",
+      "on_fail": { "action": "skip" }
+    }
+  ],
+  "on_success": { "close_store": false },
+  "on_fail_final": { "notify": true, "close_store": true },
+  "heal": {
+    "hints": "库存页 URL 为 /hz/inventory/dashboard，加载后可能重定向到 /myinventory/inventory。提取脚本 extracts/extract_inventory.js 基于 body.innerText 逐行解析（页面是 React 组件，无传统 table）。商品计数标签为「所有商品/启售商品/补全草稿/改善商品信息」，注意中英文差异。"
+  }
+}

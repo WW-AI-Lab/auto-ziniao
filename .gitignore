@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# 运行时数据（日志/产出/备份/数据库）
+data/
+
+# 前端依赖与构建产物（dist 由 npm run build 重新生成）
+webadmin/frontend/node_modules/
+webadmin/frontend/dist/
+
+# macOS
+.DS_Store

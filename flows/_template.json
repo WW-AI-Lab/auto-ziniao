@@ -1,0 +1,70 @@
+{
+  "id": "__FLOW_ID__",
+  "name": "__FLOW_NAME__",
+  "version": 1,
+  "enabled": true,
+  "schedule": "",
+  "description": "（一句话说明这个流程做什么、产出什么）",
+  "retry": { "maxAttempts": 2, "delayMs": 5000 },
+  "params": {
+    "store_name": "",
+    "_comment": "在这里声明流程参数及默认值，执行时可用 -p key=value 覆盖；store_name 为空时使用第一个店铺"
+  },
+  "steps": [
+    {
+      "id": "list_stores",
+      "tool": "list_stores",
+      "save": "stores",
+      "on_fail": { "action": "abort", "context": "bridge_down" }
+    },
+    {
+      "id": "open_store",
+      "tool": "open_store",
+      "store_selector": "first",
+      "save": "store",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "nav_target",
+      "tool": "visit_page",
+      "args": {
+        "url": "https://example.com/replace-me",
+        "waitUntil": "domcontentloaded",
+        "timeoutMs": 30000
+      },
+      "on_fail": { "action": "retry", "delayMs": 5000, "maxAttempts": 2, "context": "nav_failed" }
+    },
+    {
+      "id": "wait_page",
+      "action": "sleep",
+      "seconds": 3
+    },
+    {
+      "id": "extract_data",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/__FLOW_ID__.js",
+        "returnByValue": true
+      },
+      "save": "result_data",
+      "on_fail": { "action": "heal", "context": "extract_failed" },
+      "validate": { "not_empty": true }
+    },
+    {
+      "id": "save_result",
+      "action": "save_json",
+      "data": "${result_data}",
+      "filename": "__FLOW_ID___${date}.json"
+    },
+    {
+      "id": "close_store",
+      "tool": "close_store",
+      "on_fail": { "action": "skip" }
+    }
+  ],
+  "on_success": { "close_store": false },
+  "on_fail_final": { "notify": true, "close_store": true },
+  "heal": {
+    "hints": "（沉淀时必填：写清目标页面入口、关键选择器、页面结构特征、已知的坑，帮助自愈 Agent 快速定位问题）"
+  }
+}

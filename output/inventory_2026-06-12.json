@@ -1,0 +1,10 @@
+{
+  "totalProducts": 0,
+  "activeProducts": 0,
+  "draftProducts": 0,
+  "needsImprovement": 0,
+  "products": [],
+  "shownCount": 0,
+  "url": "https://sellercentral.amazon.com/myinventory/inventory?fulfilledBy=all&page=1&pageSize=25&sort=date_created_desc&status=all",
+  "extractedAt": "2026-06-12T08:15:36.959Z"
+}

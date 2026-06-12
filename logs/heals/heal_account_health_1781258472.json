@@ -1,0 +1,11 @@
+{
+  "heal_id": "heal_account_health_1781258472",
+  "flow_id": "account_health",
+  "flow_name": "账户健康检查",
+  "step_id": "extract_health_data",
+  "tool_name": "execute_script",
+  "error_type": "extract_failed",
+  "error": "步骤 extract_health_data 缺少必需字段: accountHealthRating",
+  "timestamp": "2026-06-12T18:01:12.975445",
+  "context": {}
+}

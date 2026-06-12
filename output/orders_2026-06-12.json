@@ -1,0 +1,14 @@
+{
+  "pendingOrders": 0,
+  "unshippedOrders": 0,
+  "todayShipments": 0,
+  "priorityPending": 0,
+  "b2bPending": 0,
+  "nearLateShipment": 0,
+  "nearCancellation": 0,
+  "totalOrdersInPeriod": 0,
+  "noOrdersFound": true,
+  "alerts": [],
+  "url": "https://sellercentral.amazon.com/orders-v3/list",
+  "extractedAt": "2026-06-12T08:16:00.787Z"
+}
