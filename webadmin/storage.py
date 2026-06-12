@@ -14,7 +14,7 @@ from datetime import datetime
 
 from .settings import DATA_DIR, DB_FILE
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _init_lock = threading.Lock()
 _initialized = False
@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     content TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'done',         -- pending|done|failed
     error TEXT,
+    extras TEXT,                                 -- JSON: {reasoning, tools}（v2 起）
     created_at TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
 );
@@ -93,7 +94,18 @@ def init_db() -> None:
                 "INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
             )
+            _migrate(conn)
         _initialized = True
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """轻量迁移：v2 为 chat_messages 增加 extras 列（推理/工具调用 JSON）。"""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(chat_messages)")}
+    if "extras" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN extras TEXT")
+    conn.execute("UPDATE meta SET value=? WHERE key='schema_version'",
+                 (str(SCHEMA_VERSION),))
+    conn.commit()
 
 
 def _raw_conn() -> sqlite3.Connection:
@@ -285,7 +297,8 @@ def add_message(session_id, role, content="", status="done", error=None) -> int:
         return cur.lastrowid
 
 
-def update_message(msg_id, content=None, status=None, error=None) -> None:
+def update_message(msg_id, content=None, status=None, error=None,
+                   extras=None) -> None:
     sets, vals = [], []
     if content is not None:
         sets.append("content=?")
@@ -296,6 +309,9 @@ def update_message(msg_id, content=None, status=None, error=None) -> None:
     if error is not None:
         sets.append("error=?")
         vals.append(str(error)[:500])
+    if extras is not None:
+        sets.append("extras=?")
+        vals.append(json.dumps(extras, ensure_ascii=False))
     if not sets:
         return
     vals.append(msg_id)
@@ -309,4 +325,12 @@ def list_messages(session_id) -> list[dict]:
             "SELECT * FROM chat_messages WHERE session_id=? ORDER BY id",
             (session_id,),
         ).fetchall()
-    return [dict(r) for r in rows]
+    items = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["extras"] = json.loads(d["extras"]) if d.get("extras") else None
+        except json.JSONDecodeError:
+            d["extras"] = None
+        items.append(d)
+    return items

@@ -1,9 +1,14 @@
 """chat 适配层：统一 `send(session_key, message) -> 异步事件流` 协议。
 
 事件类型（spec: agent-chat）：
-- {"type": "delta", "text": str}    增量内容
-- {"type": "done", "content": str}  完成（content 为完整回复）
-- {"type": "error", "message": str} 错误
+- {"type": "delta", "text": str}            增量正文
+- {"type": "reasoning_delta", "text": str}  增量推理（模型思考过程，前端折叠展示）
+- {"type": "tool_call", "name": str}        工具调用（一次调用一条）
+- {"type": "done", "content": str}          完成（content 为完整回复）
+- {"type": "error", "message": str}         错误
+
+注：CLI 通道无原生流式，也拿不到推理/工具事件（openclaw agent --json 仅含
+payloads 文本）；reasoning_delta / tool_call 仅 gateway SSE 路径可产生。
 
 适配器（探测结论见 openspec/changes/add-web-admin/notes-gateway.md）：
 - OpenClawGatewayAdapter: POST /v1/chat/completions（Bearer token），SSE 流式；
@@ -165,11 +170,21 @@ async def gateway_send(session_key: str, message: str, timeout_sec: int = 600):
                 break
             try:
                 chunk = json.loads(data)
-                delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content")
-                if delta:
-                    full.append(delta)
-                    yield {"type": "delta", "text": delta}
-            except (json.JSONDecodeError, IndexError):
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                # 推理增量：兼容 reasoning_content（DeepSeek 风格）与 reasoning
+                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                if isinstance(reasoning, str) and reasoning:
+                    yield {"type": "reasoning_delta", "text": reasoning}
+                # 工具调用：流式分片中 function.name 只在首片出现
+                for tc in delta.get("tool_calls") or []:
+                    name = (tc.get("function") or {}).get("name")
+                    if name:
+                        yield {"type": "tool_call", "name": name}
+                content = delta.get("content")
+                if content:
+                    full.append(content)
+                    yield {"type": "delta", "text": content}
+            except (json.JSONDecodeError, IndexError, AttributeError):
                 continue
     finally:
         try:

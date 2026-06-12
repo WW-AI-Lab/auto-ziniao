@@ -56,7 +56,7 @@ export default function Dashboard() {
         <Col span={4}>
           <Card>
             <Statistic
-              title="计划任务（启用/总数）"
+              title="计划任务"
               value={`${stats.schedules.enabled}/${stats.schedules.total}`}
             />
           </Card>

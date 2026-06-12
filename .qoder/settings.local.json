@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/liuxingwang/ziniao-scripts && echo \"---\" && cat /Users/liuxingwang/ziniao-scripts/webadmin/package.json 2>/dev/null | head -20 || echo \"no package.json\")",
+      "Bash(find /Users/liuxingwang/ziniao-scripts/webadmin -maxdepth 2 -name \"*.py\" -o -name \"*.js\" -o -name \"*.json\" | head -30 && echo \"---\" && ls /Users/liuxingwang/ziniao-scripts/webadmin/)",
+      "Bash(cat /Users/liuxingwang/ziniao-scripts/webadmin/frontend/vite.config.ts 2>/dev/null || cat /Users/liuxingwang/ziniao-scripts/webadmin/frontend/vite.config.js 2>/dev/null || echo \"no vite config\")",
+      "Bash(ls /Users/liuxingwang/ziniao-scripts/webadmin/frontend/node_modules 2>/dev/null && echo \"node_modules exists\" || echo \"no node_modules\")",
+      "Bash(ls /Users/liuxingwang/ziniao-scripts/.venv/bin/python3 2>/dev/null && echo \"venv exists\" || echo \"no venv\")",
+      "Bash(cd /Users/liuxingwang/ziniao-scripts && ./dev.sh &\nDEV_PID=$!\necho \"dev.sh PID: $DEV_PID\"\nsleep 5\necho \"--- 检查端口 ---\"\nlsof -i :9482 2>/dev/null | grep LISTEN || echo \"后端未监听\"\nlsof -i :5173 2>/dev/null | grep LISTEN || echo \"前端未监听\"\necho \"--- 测试后端 API ---\"\ncurl -s http://127.0.0.1:9482/api/flows 2>/dev/null | head -c 200 || echo \"后端请求失败\"\necho\necho \"--- 测试前端 ---\"\ncurl -s http://localhost:5173 2>/dev/null | head -c 200 || echo \"前端请求失败\"\necho\necho \"--- 停止 dev.sh ---\"\nkill $DEV_PID 2>/dev/null\nsleep 2\n# 清理子进程\nkill $\\(lsof -ti :9482 2>/dev/null\\) 2>/dev/null || true\nkill $\\(lsof -ti :5173 2>/dev/null\\) 2>/dev/null || true\necho \"测试完毕\")",
+      "Bash(cd /Users/liuxingwang/ziniao-scripts\n# 第一轮：后台启动\n./dev.sh &\nPID1=$!\nsleep 4\necho \"=== 第一轮启动完毕，检查端口 ===\"\nlsof -i :9482 2>/dev/null | grep LISTEN | awk '{print \"PID:\", $2}'\nlsof -i :5173 2>/dev/null | grep LISTEN | awk '{print \"PID:\", $2}'\n\n# 第二轮：再启动一次，应自动杀掉第一轮\n./dev.sh &\nPID2=$!\nsleep 4\necho \"=== 第二轮启动完毕，检查端口 ===\"\nlsof -i :9482 2>/dev/null | grep LISTEN | awk '{print \"PID:\", $2}'\nlsof -i :5173 2>/dev/null | grep LISTEN | awk '{print \"PID:\", $2}'\n\necho \"=== 清理 ===\"\nkill $PID1 $PID2 2>/dev/null || true\nsleep 1\nkill $\\(lsof -ti :9482 2>/dev/null\\) 2>/dev/null || true\nkill $\\(lsof -ti :5173 2>/dev/null\\) 2>/dev/null || true\necho \"验证完毕\")"
+    ]
+  }
+}

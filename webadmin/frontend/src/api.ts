@@ -118,6 +118,16 @@ export interface ChatSession {
   busy?: boolean
 }
 
+export interface ChatToolCall {
+  name: string
+}
+
+/** 推理与工具调用附加信息（随 assistant 消息落库） */
+export interface ChatExtras {
+  reasoning?: string
+  tools?: ChatToolCall[]
+}
+
 export interface ChatMessage {
   id: number
   session_id: string
@@ -125,6 +135,7 @@ export interface ChatMessage {
   content: string
   status: 'pending' | 'done' | 'failed'
   error: string | null
+  extras?: ChatExtras | null
   created_at: string
 }
 
@@ -165,6 +176,8 @@ export interface ManualRun {
 export type ChatEvent =
   | { type: 'start'; message_id: number }
   | { type: 'delta'; text: string }
+  | { type: 'reasoning_delta'; text: string }
+  | { type: 'tool_call'; name: string }
   | { type: 'done'; content: string }
   | { type: 'error'; message: string }
 

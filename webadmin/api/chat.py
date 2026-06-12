@@ -1,6 +1,7 @@
 """Agent 对话 API：会话 CRUD + SSE 消息流（spec: agent-chat）。
 
-SSE 事件格式：`data: {"type": "delta|done|error", ...}\n\n`，心跳为注释行 `: ping`。
+SSE 事件格式：`data: {"type": "delta|reasoning_delta|tool_call|done|error", ...}\n\n`，
+心跳为注释行 `: ping`。推理与工具调用累计后随消息落库到 extras 列。
 关键行为：
 - 同会话串行（进行中再发返回 409）；
 - 客户端断开不中断 agent 任务：处理协程独立于 SSE 生成器运行，回复照常落库。
@@ -101,22 +102,35 @@ async def _process_message(session: dict, content: str, assistant_msg_id: int,
     sid = session["id"]
     session_key = f"ziniao-webadmin:{sid}"
     parts: list[str] = []
+    reasoning_parts: list[str] = []
+    tools: list[dict] = []
+
+    def _extras() -> dict | None:
+        if not reasoning_parts and not tools:
+            return None
+        return {"reasoning": "".join(reasoning_parts), "tools": tools}
+
     try:
         async for evt in adapters.send(session["agent"], session_key, content):
             if evt["type"] == "delta":
                 parts.append(evt["text"])
+            elif evt["type"] == "reasoning_delta":
+                reasoning_parts.append(evt["text"])
+            elif evt["type"] == "tool_call":
+                tools.append({"name": evt["name"]})
             elif evt["type"] == "done":
                 full = evt.get("content") or "".join(parts)
-                storage.update_message(assistant_msg_id, content=full, status="done")
+                storage.update_message(assistant_msg_id, content=full,
+                                       status="done", extras=_extras())
             elif evt["type"] == "error":
                 storage.update_message(
                     assistant_msg_id, content="".join(parts),
-                    status="failed", error=evt["message"])
+                    status="failed", error=evt["message"], extras=_extras())
             queue.put_nowait(evt)
     except Exception as e:
         log.exception("chat 处理异常 (session=%s)", sid)
         storage.update_message(assistant_msg_id, content="".join(parts),
-                               status="failed", error=str(e))
+                               status="failed", error=str(e), extras=_extras())
         queue.put_nowait({"type": "error", "message": f"内部错误: {e}"})
     finally:
         _busy_sessions.discard(sid)
