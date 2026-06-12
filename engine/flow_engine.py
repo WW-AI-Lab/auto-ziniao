@@ -12,27 +12,17 @@
 """
 
 import json
-import os
-import sys
 import time
 import csv
 import re
 import traceback
 from datetime import datetime
-from pathlib import Path
 
-# 确保可以导入同目录模块
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from zclaw_client import ZClawClient, ZClawError
-from self_heal import trigger_heal, check_known_issues
-
-
-SCRIPTS_DIR = Path(__file__).parent
-FLOWS_DIR = SCRIPTS_DIR / "flows"
-EXTRACTS_DIR = SCRIPTS_DIR / "extracts"
-OUTPUT_DIR = SCRIPTS_DIR / "output"
-LOGS_DIR = SCRIPTS_DIR / "logs"
-LEARNINGS_DIR = SCRIPTS_DIR / "learnings"
+from .zclaw_client import ZClawClient, ZClawError
+from .self_heal import trigger_heal, check_known_issues
+from .paths import (
+    REPO_ROOT, FLOWS_DIR, EXTRACTS_DIR, OUTPUT_DIR, LOGS_DIR, LEARNINGS_DIR,
+)
 
 # ZClaw bridge 的合法工具名（与 GET /zclaw/tools 对齐，validate 用）
 KNOWN_TOOLS = {
@@ -414,7 +404,7 @@ class FlowRunner:
             script = args.get("script", "")
             # 支持 @extracts/xxx.js 文件引用（文件内容同样做变量替换）
             if script.startswith("@"):
-                script_path = SCRIPTS_DIR / script[1:]
+                script_path = REPO_ROOT / script[1:]
                 if not script_path.exists():
                     raise FlowError(f"脚本文件不存在: {script_path}")
                 script = self._resolve_var_in_text(
@@ -814,7 +804,7 @@ def validate_flow(flow_def):
         # @extracts 引用
         script = step.get("args", {}).get("script", "")
         if isinstance(script, str) and script.startswith("@"):
-            if not (SCRIPTS_DIR / script[1:]).exists():
+            if not (REPO_ROOT / script[1:]).exists():
                 err(f"步骤 {sid} 引用的脚本文件不存在: {script}")
 
         # ${params.x} 引用检查
@@ -894,62 +884,4 @@ def parse_params(pairs):
     return params
 
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="紫鸟自动化流程引擎")
-    parser.add_argument("command", choices=["run", "list", "history", "validate"],
-                        help="run=执行流程, list=列出流程, history=查看历史, validate=校验流程定义")
-    parser.add_argument("flow_id", nargs="?", help="流程 ID")
-    parser.add_argument("-p", "--param", action="append", default=[],
-                        metavar="K=V", help="流程参数，可重复，如 -p store_name=Rosehut")
-    parser.add_argument("--no-heal", action="store_true", help="失败时不触发自愈")
-    parser.add_argument("-v", "--verbose", action="store_true", help="详细输出")
-    parser.add_argument("--last", type=int, default=10, help="历史记录条数")
-
-    args = parser.parse_args()
-
-    if args.command == "run":
-        if not args.flow_id:
-            print("错误: run 命令需要指定流程 ID")
-            sys.exit(1)
-        result = run_flow(args.flow_id, verbose=args.verbose,
-                          params=parse_params(args.param), heal=not args.no_heal)
-        print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-        sys.exit(0 if result.get("status") == "success" else 1)
-
-    elif args.command == "validate":
-        if not args.flow_id:
-            print("错误: validate 命令需要指定流程 ID")
-            sys.exit(1)
-        issues = validate_flow(load_flow(args.flow_id))
-        if not issues:
-            print(f"✅ {args.flow_id} 校验通过")
-            sys.exit(0)
-        for lv, msg in issues:
-            print(f"  {'❌' if lv == 'error' else '⚠️ '} [{lv}] {msg}")
-        sys.exit(1 if any(lv == "error" for lv, _ in issues) else 0)
-
-    elif args.command == "list":
-        flows = list_flows()
-        if not flows:
-            print("没有找到任何流程")
-        else:
-            print(f"{'ID':<25} {'名称':<20} {'版本':>4} {'状态':<6} {'调度':<14} {'参数'}")
-            print("-" * 100)
-            for f in flows:
-                status = "✅" if f.get("enabled", True) else "⏸"
-                params = ",".join(f"{k}={v}" for k, v in f.get("params", {}).items())
-                print(f"{f['id']:<25} {f['name']:<20} v{f.get('version', 1):<3} "
-                      f"{status:<6} {f.get('schedule', '') or '-':<14} {params or '-'}")
-
-    elif args.command == "history":
-        entries = show_history(args.flow_id, args.last)
-        if not entries:
-            print("没有运行记录")
-        else:
-            for e in entries:
-                icon = {"success": "✅", "failed": "❌", "error": "💥"}.get(e["status"], "❓")
-                print(f"  {icon} {e['timestamp']} [{e['flow_id']}] {e['status']} "
-                      f"({e['duration_ms']:.0f}ms)")
-                if e.get("error"):
-                    print(f"     └ {e['error'][:80]}")
+# CLI 入口统一收敛到仓库根 manager.py（run/list/validate/history 等命令均由其提供）

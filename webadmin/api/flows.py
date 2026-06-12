@@ -1,24 +1,20 @@
 """flows 管理 API（spec: flow-management）。"""
 
 import json
-import sys
 import time
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+# 复用引擎同一校验实现（engine.flow_engine 纯标准库，导入无副作用）
+from engine.flow_engine import validate_flow
+
 from .. import engine_data, flow_exec
 from ..errors import ApiError, bad_request, conflict, not_found
-from ..settings import FLOWS_DIR, ROOT_DIR
-
-# 复用引擎同一校验实现（flow_engine 纯标准库，导入无副作用）
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
-from flow_engine import validate_flow  # noqa: E402
+from ..settings import FLOWS_DIR, FLOW_BACKUPS_DIR as BACKUP_DIR
 
 router = APIRouter(prefix="/api", tags=["flows"])
 
-BACKUP_DIR = FLOWS_DIR / ".backup"
 BACKUP_KEEP = 5
 
 

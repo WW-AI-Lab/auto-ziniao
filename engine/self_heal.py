@@ -21,14 +21,11 @@ import json
 import subprocess
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
-SCRIPTS_DIR = Path(__file__).parent
-LOGS_DIR = SCRIPTS_DIR / "logs"
-LEARNINGS_DIR = SCRIPTS_DIR / "learnings"
-HEAL_LOGS_DIR = LOGS_DIR / "heals"
-TEMPLATES_DIR = SCRIPTS_DIR / "heal_templates"
-CONFIG_PATH = SCRIPTS_DIR / "config.json"
+from .paths import (
+    REPO_ROOT, FLOWS_DIR, LOGS_DIR, LEARNINGS_DIR, HEAL_LOGS_DIR,
+    HEAL_TEMPLATES_DIR as TEMPLATES_DIR, CONFIG_PATH,
+)
 
 DEFAULT_CONFIG = {
     "heal": {
@@ -132,7 +129,7 @@ BUILTIN_PREFIX = """你是紫鸟自动化自愈 Agent。一个固化的自动化
 2. 用 ziniao-assistant skill（POST http://127.0.0.1:9481/zclaw/tools/invoke）操作紫鸟浏览器诊断
 3. 找到根因（页面结构变化？选择器失效？超时？认证过期？）
 4. 修复流程定义 JSON 或 extracts/ 下的提取脚本
-5. 重新执行修复后的流程验证: cd {scripts_dir} && python3 flow_engine.py run {flow_id} -v
+5. 重新执行修复后的流程验证: cd {scripts_dir} && python3 manager.py run {flow_id} -v
 6. 将修复方案写入 {scripts_dir}/learnings/known_issues.json
 7. 按 AGENTS.md 的约定通知修复结果
 
@@ -151,7 +148,7 @@ BUILTIN_PREFIX = """你是紫鸟自动化自愈 Agent。一个固化的自动化
 - 所有浏览器操作只能通过 ZClaw bridge（X-ZClaw-Api-Key 认证，key 在 ~/.zclaw/config.json）
 - 工具名以 GET /zclaw/tools 返回为准，不要臆造工具名
 - execute_script 的 JS 必须用 IIFE 包裹: (function(){{ ... }})()
-- 修复后必须用 flow_engine.py 重跑验证，再固化
+- 修复后必须用 manager.py 重跑验证，再固化
 - 提取类 JS 放在 extracts/*.js，流程中用 "@extracts/xxx.js" 引用，不要内联长脚本
 """
 
@@ -201,8 +198,8 @@ BUILTIN_TEMPLATES = {
 BUILTIN_FOOTER = """
 ## 修复后必须执行（固化闭环）
 1. 更新 {scripts_dir}/flows/{flow_id}.json 或对应的 extracts/*.js（修复根因，版本号 version +1）
-2. 校验: python3 flow_engine.py validate {flow_id}
-3. 验证: python3 flow_engine.py run {flow_id} -v --no-heal（必须真实跑通）
+2. 校验: python3 manager.py validate {flow_id}
+3. 验证: python3 manager.py run {flow_id} -v --no-heal（必须真实跑通）
 4. 将修复写入 {scripts_dir}/learnings/known_issues.json 的 issues 数组:
    {{
      "pattern": "<错误信息中稳定可匹配的特征子串>",
@@ -269,7 +266,7 @@ def build_heal_prompt(heal_id, flow_id, flow_name, step_id, tool_name, error,
         json.dump(heal_data, f, ensure_ascii=False, indent=2, default=str)
 
     fields = _SafeDict(
-        scripts_dir=str(SCRIPTS_DIR),
+        scripts_dir=str(REPO_ROOT),
         flow_id=flow_id,
         flow_name=flow_name,
         step_id=step_id,
@@ -516,7 +513,7 @@ def check_known_issues(flow_id, step_id, error):
 
 
 # ============================================================
-# CLI 入口（手动测试用）
+# CLI 入口（手动测试用）: python3 -m engine.self_heal --flow-id xxx --dry-run
 # ============================================================
 
 if __name__ == "__main__":
@@ -532,7 +529,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     flow_name = args.flow_id
-    flow_file = SCRIPTS_DIR / "flows" / f"{args.flow_id}.json"
+    flow_file = FLOWS_DIR / f"{args.flow_id}.json"
     heal_section = {}
     if flow_file.exists():
         try:

@@ -119,7 +119,7 @@ def list_heals(limit=50, offset=0) -> dict:
 
 
 def get_heal_detail(heal_id: str) -> dict | None:
-    """读取 logs/heals/<heal_id>.json + 同名提示词 MD（如有）。"""
+    """读取 data/logs/heals/<heal_id>.json + 同名提示词 MD（如有）。"""
     if not re.fullmatch(r"[A-Za-z0-9_\-]+", heal_id):
         return None
     ctx_file = HEALS_DIR / f"{heal_id}.json"

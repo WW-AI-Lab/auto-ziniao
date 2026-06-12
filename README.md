@@ -2,7 +2,7 @@
 
 把 Agent（OpenClaw / Claude Code 等）跑通的紫鸟店铺操作任务**沉淀**为 0 tokens、可传参重复执行的流程；执行异常时**自动触发 Agent CLI 自愈**，修复方案回写知识库，越用越省。
 
-> **最高安全规则：所有浏览器操作只通过紫鸟 ZClaw bridge（`127.0.0.1:9481/zclaw/*`）在紫鸟店铺浏览器内执行，绝对禁止使用本机浏览器或 Playwright/Selenium 等框架。** 代码层面由 `zclaw_client.py` 的路径白名单强制保证。
+> **最高安全规则：所有浏览器操作只通过紫鸟 ZClaw bridge（`127.0.0.1:9481/zclaw/*`）在紫鸟店铺浏览器内执行，绝对禁止使用本机浏览器或 Playwright/Selenium 等框架。** 代码层面由 `engine/zclaw_client.py` 的路径白名单强制保证。
 
 ## 快速开始
 
@@ -41,7 +41,7 @@ python3 -m venv .venv && .venv/bin/pip install -r webadmin/requirements.txt
 - **安全边界**：服务仅监听 `127.0.0.1`，无登录。代码不提供改绑 `0.0.0.0` 的开关，也请勿通过反向代理将其暴露到局域网/公网。
 - **调度防重**：webadmin 的计划任务与系统 crontab 是两套独立调度。某个 flow 接入 webadmin 计划任务后，请从 crontab 中移除对应条目，避免双调度并发执行同一流程。
 - **Agent 对话**：agent 清单来自 `config.json` 的 `heal.agents`。openclaw 优先走 gateway 的 `/v1/chat/completions`（需在 `~/.openclaw/openclaw.json` 启用 `gateway.http.endpoints.chatCompletions.enabled: true`），未启用时自动回退 `openclaw agent` CLI。
-- **回滚**：停止服务后删除 `webadmin/` 目录即可完全移除，引擎与数据不受影响。
+- **回滚**：停止服务后删除 `webadmin/` 目录与 `data/webadmin.db` 即可完全移除，引擎与数据不受影响。
 
 ## 已沉淀的流程
 
@@ -72,13 +72,14 @@ python3 manager.py cron                  # 生成 crontab 配置建议
 ## 目录速览
 
 ```
-flow_engine.py / manager.py / self_heal.py / zclaw_client.py   核心四件套
+manager.py           管理 CLI 入口（转发 engine/manager.py，命令见上文）
+engine/              核心引擎包（flow_engine / self_heal / zclaw_client / manager / paths）
 config.json          自愈 Agent CLI、冷却、告警配置
 flows/               流程定义（_template.json 为脚手架模板）
 extracts/            页面提取 JS（IIFE）
 heal_templates/      自愈提示词模板（可按流程定制）
 learnings/           known_issues.json 知识库 + heals.jsonl 事件流
-logs/  output/       运行日志 / 任务产出
+data/                运行时数据（logs/ output/ backups/ webadmin.db，gitignore）
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）

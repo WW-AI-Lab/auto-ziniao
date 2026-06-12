@@ -1,7 +1,7 @@
 """flow 子进程执行与 flow 级锁（手动运行 API 与调度器共用）。
 
 设计决策（design.md）：
-- 执行走 subprocess 调 `flow_engine.py run`，与 cron/手工路径完全一致，
+- 执行走 subprocess 调 `manager.py run`，与 cron/手工路径完全一致，
   失败自愈由引擎内部处理，webadmin 不在外层包重试；
 - 同一 flow 同时只允许一个运行实例（进程内锁，手动与调度共用）；
 - 子进程默认 30 分钟超时，超时强杀记失败。
@@ -44,7 +44,7 @@ def is_flow_running(flow_id: str) -> bool:
 
 
 def build_run_command(flow_id: str, params: dict | None) -> list[str]:
-    cmd = [sys.executable, str(ROOT_DIR / "flow_engine.py"), "run", flow_id]
+    cmd = [sys.executable, str(ROOT_DIR / "manager.py"), "run", flow_id]
     for k, v in (params or {}).items():
         cmd += ["-p", f"{k}={v}"]
     return cmd

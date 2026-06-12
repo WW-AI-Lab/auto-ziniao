@@ -206,7 +206,7 @@ export default function Flows() {
             格式化
           </Button>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            保存前后端会再次执行引擎级校验；原文件自动备份至 flows/.backup/（保留 5 份）
+            保存前后端会再次执行引擎级校验；原文件自动备份至 data/backups/flows/（保留 5 份）
           </Typography.Text>
         </Space>
 

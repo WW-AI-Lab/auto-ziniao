@@ -10,7 +10,7 @@
 - 打开页面只有两种方式：店铺已开用 `visit_page`；未开用 `open_store`（可带 `launchUrl`）。店铺浏览器由紫鸟客户端自行拉起——它是 Chromium 内核，外观像 Chrome，但走店铺独立 IP 环境，**这不是本机浏览器**。
 - 禁止：打开 Chrome/Safari/Edge/Firefox、使用 Playwright/Selenium/Puppeteer/browser-use、调用 `webbrowser` 模块、`open <url>` 命令。
 - 工具名以 `GET /zclaw/tools` 返回为准（当前 20 个），**禁止臆造**（没有 `navigate`/`open_url`/`run_script`/`screenshot` 这类名字）。
-- 代码层守卫：`zclaw_client.py` 的 `_request()` 路径白名单（仅 `/zclaw/*`）是硬约束，**禁止修改或绕过**。
+- 代码层守卫：`engine/zclaw_client.py` 的 `_request()` 路径白名单（仅 `/zclaw/*`）是硬约束，**禁止修改或绕过**。
 - bridge 不可达（连接拒绝/超时）= 紫鸟客户端没开，属于环境问题：停止任务并告知用户，不要改代码绕过，不要换浏览器方案。
 
 ## 你在本仓库的三种工作模式
@@ -26,15 +26,15 @@
    - 可能失败的步骤配 `on_fail`：瞬时问题（加载慢）用 `retry`，页面结构问题用 `heal` 并标注 `context` 错误类型；
    - 有状态差异的场景用 `branch` 写多分支（如已登录/未登录、有数据/无数据、已是目标状态）；
    - **必须**填写 `heal.hints`：页面入口、关键选择器、页面结构特征、已知坑——这是给未来自愈 Agent 的提示词素材。
-4. 验收：`python3 manager.py validate <flow_id>` 通过 → `python3 manager.py run <flow_id> -v --no-heal` 真机跑通 → 检查 `output/` 产出正确。
+4. 验收：`python3 manager.py validate <flow_id>` 通过 → `python3 manager.py run <flow_id> -v --no-heal` 真机跑通 → 检查 `data/output/` 产出正确。
 5. 复杂流程可追加 `heal_templates/<flow_id>/<error_type>.md` 定制自愈提示词。
 
-### 模式 B：自愈修复（你被 self_heal.py 的提示词唤起）
+### 模式 B：自愈修复（你被 engine/self_heal.py 的提示词唤起）
 
-1. 读提示词中的失败上下文（`logs/heals/<heal_id>.json`）、流程定义、截图。
+1. 读提示词中的失败上下文（`data/logs/heals/<heal_id>.json`）、流程定义、截图。
 2. 通过 ZClaw bridge 复现诊断（截图/读 DOM/试选择器）。
 3. 修复 `flows/<id>.json` 或 `extracts/*.js`（version +1），**不要**修改引擎代码来掩盖流程问题。
-4. 验证：`python3 flow_engine.py validate <id>` → `python3 flow_engine.py run <id> -v --no-heal` 必须真实跑通。
+4. 验证：`python3 manager.py validate <id>` → `python3 manager.py run <id> -v --no-heal` 必须真实跑通。
 5. 固化：把修复写入 `learnings/known_issues.json`（pattern 取错误信息中稳定子串，`resolved: true`）。
 6. 通知用户：根因、修复内容、验证结果。
 
@@ -48,16 +48,18 @@
 
 | 路径 | 作用 | 修改约束 |
 |------|------|----------|
-| `zclaw_client.py` | 唯一网络出口（含安全白名单） | 白名单禁止动 |
-| `flow_engine.py` | 流程引擎 | 修流程问题时不要改它 |
-| `self_heal.py` | 自愈触发器 | 模板尽量放文件，少改内置 |
-| `manager.py` | 管理 CLI | - |
+| `manager.py` | 管理 CLI 入口（转发 `engine/manager.py`，命令不变） | - |
+| `engine/zclaw_client.py` | 唯一网络出口（含安全白名单） | 白名单禁止动 |
+| `engine/flow_engine.py` | 流程引擎 | 修流程问题时不要改它 |
+| `engine/self_heal.py` | 自愈触发器 | 模板尽量放文件，少改内置 |
+| `engine/paths.py` | 全仓路径常量唯一出处 | 目录调整需同步文档 |
 | `config.json` | 自愈 Agent CLI/冷却/告警 | 用户级配置，改前确认 |
 | `flows/*.json` | 沉淀的流程（`_template.json` 是模板） | 改后必须 validate + 真机验证 |
 | `extracts/*.js` | 页面提取 JS | IIFE；禁模板字符串 |
 | `heal_templates/` | 自愈提示词模板 | 可按流程加子目录定制 |
 | `learnings/known_issues.json` | 已知问题库（0 tokens 修复路径） | 修复后必须回写 |
-| `logs/` `output/` | 运行日志/产出 | 只读，勿手工编辑 |
+| `data/` | 运行时数据（logs/output/backups/webadmin.db） | 只读，勿手工编辑 |
+| `webadmin/` | Web 管理界面（可选子工程） | 引擎主体禁止 import 它 |
 | `docs/` | 架构与规范文档 | 架构变更需同步更新 |
 
 ## 通用约定
