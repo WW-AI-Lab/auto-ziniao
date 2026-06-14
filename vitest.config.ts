@@ -5,7 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ziniao/core": path.resolve(__dirname, "packages/core/src/index.ts"),
-      "@ziniao/schemas": path.resolve(__dirname, "packages/schemas/src/index.ts")
+      "@ziniao/schemas": path.resolve(__dirname, "packages/schemas/src/index.ts"),
+      "@ziniao/zclaw": path.resolve(__dirname, "packages/zclaw/src/index.ts")
     }
   },
   test: {

@@ -52,6 +52,22 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/zclaw:
+    dependencies:
+      '@ziniao/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ziniao/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.13.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
 packages:
 
   '@emnapi/core@1.10.0':

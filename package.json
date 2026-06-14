@@ -8,8 +8,8 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc -b packages/core packages/schemas",
-    "typecheck": "tsc -b packages/core packages/schemas --pretty false",
+    "build": "tsc -b packages/core packages/schemas packages/zclaw",
+    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw --pretty false",
     "test": "vitest run",
     "schemas:export": "tsx packages/schemas/scripts/export-json-schema.ts",
     "validate:python": "tsx scripts/validate-python-flows.ts",

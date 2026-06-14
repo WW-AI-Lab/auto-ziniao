@@ -12,7 +12,8 @@
     "baseUrl": ".",
     "paths": {
       "@ziniao/core": ["packages/core/src/index.ts"],
-      "@ziniao/schemas": ["packages/schemas/src/index.ts"]
+      "@ziniao/schemas": ["packages/schemas/src/index.ts"],
+      "@ziniao/zclaw": ["packages/zclaw/src/index.ts"]
     },
     "declaration": true,
     "declarationMap": true,

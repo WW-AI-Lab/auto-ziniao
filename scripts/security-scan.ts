@@ -26,6 +26,18 @@ const directBridgeRules: Array<{ label: string; pattern: RegExp }> = [
   }
 ];
 
+function normalizePath(filePath: string): string {
+  return path.relative(repoRoot, filePath).split(path.sep).join("/");
+}
+
+function isSecurityScan(filePath: string): boolean {
+  return normalizePath(filePath) === "scripts/security-scan.ts";
+}
+
+function isAllowedZClawBridgeFile(filePath: string): boolean {
+  return normalizePath(filePath).startsWith("packages/zclaw/src/");
+}
+
 function readJson(filePath: string): Record<string, unknown> {
   return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
 }
@@ -74,7 +86,7 @@ for (const filePath of [
   ...walk(path.join(repoRoot, "packages")),
   ...walk(path.join(repoRoot, "scripts"))
 ]) {
-  if (filePath.endsWith("security-scan.ts")) {
+  if (isSecurityScan(filePath)) {
     continue;
   }
   const text = readFileSync(filePath, "utf8");
@@ -83,10 +95,9 @@ for (const filePath of [
       failures.push(`${filePath}: ${rule.label}`);
     }
   }
-}
-
-for (const filePath of walk(path.join(repoRoot, "packages"))) {
-  const text = readFileSync(filePath, "utf8");
+  if (isAllowedZClawBridgeFile(filePath)) {
+    continue;
+  }
   for (const rule of directBridgeRules) {
     if (rule.pattern.test(text)) {
       failures.push(`${filePath}: ${rule.label}`);
