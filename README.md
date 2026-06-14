@@ -26,27 +26,28 @@ python3 manager.py stats
 
 ## TypeScript 迁移基线（开发中）
 
-当前已完成 `docs/05-TS重构技术蓝图.md` 的 M3：Flow Engine 迁移。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw` 和 `packages/flow-engine`：
+当前已完成 `docs/05-TS重构技术蓝图.md` 的 M4：Self-Heal 迁移。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine` 和 `packages/self-heal`：
 
 - `packages/core`：路径、JSON/JSONL、时间、错误类型等无浏览器副作用能力。
 - `packages/schemas`：flow DSL、运行日志、自愈记录和 WebAdmin DTO 的 TypeScript schema。
 - `packages/zclaw`：TypeScript 侧唯一 ZClaw bridge client，负责 API key 读取、`/zclaw/*` 路径白名单、`GET /zclaw/tools`、`POST /zclaw/tools/invoke` 和最小高级封装。
 - `packages/flow-engine`：TypeScript flow loader、静态校验 wrapper、参数/变量/分支/validate/action 执行语义、mock ZClaw tool dispatch、output 和 run log 兼容写入。
+- `packages/self-heal`：TypeScript 自愈包，提供错误分类、known issues 命中、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 和 mock runner 离线测试。
 
 ```bash
 pnpm install
 pnpm validate:baseline
 ```
 
-注意：现阶段 TypeScript 已具备 flow-engine 离线执行和双跑验证能力，但不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、临时数据目录和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
+注意：现阶段 TypeScript 已具备 flow-engine 离线执行、self-heal dry-run 和双跑验证基础能力，但不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、mock Agent runner、临时数据目录、固定 clock 和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，不得调用真实 OpenClaw/Claude/Cursor Agent CLI，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
 
 ```bash
 python3 manager.py ...
 ```
 
-本阶段非目标：不迁移 `engine/self_heal.py`，不新增 `packages/cli`，不迁移 WebAdmin，不替换 `python3 manager.py ...`。下一阶段为 M4 `packages/self-heal`。
+本阶段非目标：不新增 `packages/cli`，不迁移 WebAdmin，不替换 `python3 manager.py ...`，不移除 Python engine。下一阶段为 M5 `packages/cli`。
 
-回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M3，删除 `packages/flow-engine` 并恢复 root scripts 与 TS alias 即可。
+回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M4，删除 `packages/self-heal` 并恢复 root scripts、TS alias 与 security scan 改动即可。回滚后验证 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`。
 
 ## Web 管理界面（可选）
 
@@ -105,7 +106,7 @@ heal_templates/      自愈提示词模板（可按流程定制）
 learnings/           known_issues.json 知识库 + heals.jsonl 事件流
 data/                运行时数据（logs/ output/ backups/ webadmin.db，gitignore）
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
-packages/            TypeScript 迁移包（core / schemas / zclaw / flow-engine，当前不替换生产入口）
+packages/            TypeScript 迁移包（core / schemas / zclaw / flow-engine / self-heal，当前不替换生产入口）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 ```

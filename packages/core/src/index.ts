@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFile, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -69,6 +69,39 @@ export async function readJsonLinesFile<T = unknown>(
     return [];
   }
   return readJsonLines<T>(await readFile(filePath, "utf8"));
+}
+
+export function ensureDir(dirPath: string): void {
+  mkdirSync(dirPath, { recursive: true });
+}
+
+export function writeJsonFile(filePath: string, value: unknown): void {
+  ensureDir(path.dirname(filePath));
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+export async function writeJsonFileAsync(
+  filePath: string,
+  value: unknown
+): Promise<void> {
+  ensureDir(path.dirname(filePath));
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+export async function writeTextFile(
+  filePath: string,
+  value: string
+): Promise<void> {
+  ensureDir(path.dirname(filePath));
+  await writeFile(filePath, value, "utf8");
+}
+
+export async function appendJsonLine(
+  filePath: string,
+  value: unknown
+): Promise<void> {
+  ensureDir(path.dirname(filePath));
+  await appendFile(filePath, `${JSON.stringify(value)}\n`, "utf8");
 }
 
 export async function listJsonFiles(dirPath: string): Promise<string[]> {

@@ -22,7 +22,13 @@ export const HealEventSchema = z
     flow_id: z.string().optional(),
     step_id: z.string().optional(),
     error_type: z.string().optional(),
-    reason: z.string().optional()
+    reason: z.string().optional(),
+    agent: z.string().optional(),
+    session_key: z.string().optional(),
+    prompt_path: z.string().optional(),
+    heal_log_path: z.string().optional(),
+    cli_exit_code: z.number().optional(),
+    cli_stderr: z.string().optional()
   })
   .passthrough();
 
@@ -37,7 +43,10 @@ export const HealContextSchema = z
     error: z.string().optional(),
     timestamp: z.string(),
     params: z.record(z.unknown()).optional().default({}),
-    context: z.record(z.unknown()).optional().default({})
+    context: z.record(z.unknown()).optional().default({}),
+    prompt_path: z.string().optional(),
+    failed_args: z.unknown().optional(),
+    screenshot: z.string().optional()
   })
   .passthrough();
 

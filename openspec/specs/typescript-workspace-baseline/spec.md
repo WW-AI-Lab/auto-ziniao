@@ -15,7 +15,7 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **THEN** typecheck/test/build 在 `packages/*` 范围内运行，不启动 ZClaw bridge、不打开店铺浏览器
 
 ### Requirement: 包边界最小化
-系统 SHALL 按迁移阶段维护最小 TypeScript 包边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 SHALL 仅在此基础上新增 `packages/flow-engine`。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度。除本阶段明确允许的 `packages/flow-engine` 外，系统 MUST NOT 创建或实现 `packages/self-heal`、`packages/cli`、`apps/webadmin-api` 或替换 WebAdmin 运行链路。
+系统 SHALL 按迁移阶段维护最小 TypeScript 包边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 已新增 `packages/flow-engine`；M4 SHALL 仅在此基础上新增 `packages/self-heal`。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度；`packages/self-heal` MUST 只实现错误分类、known issues、prompt/template rendering、cooldown、heal event log 和 Agent CLI adapter。除本阶段明确允许的 `packages/self-heal` 外，系统 MUST NOT 创建或实现 `packages/cli`、`apps/webadmin-api` 或替换 WebAdmin 运行链路。
 
 #### Scenario: core 与 schemas 无浏览器副作用
 - **WHEN** 审查 `packages/core` 与 `packages/schemas`
@@ -29,9 +29,13 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **WHEN** 审查 `packages/flow-engine` 源码
 - **THEN** flow-engine 可以依赖 `@ziniao/zclaw` 或注入兼容 tool client，但不得直接拼接 ZClaw bridge HTTP 请求
 
+#### Scenario: self-heal 不访问 bridge
+- **WHEN** 审查 `packages/self-heal` 源码
+- **THEN** self-heal 不依赖 `@ziniao/zclaw`，不读取 ZClaw API key，不直接访问 bridge，不打开本机浏览器
+
 #### Scenario: 后续包不在本阶段创建
 - **WHEN** 检查本 change 的实现范围
-- **THEN** 不要求实现 `packages/self-heal`、`packages/cli` 或 `apps/webadmin-api`
+- **THEN** 不要求实现 `packages/cli` 或 `apps/webadmin-api`
 
 ### Requirement: 安全扫描进入基线验证
 系统 SHALL 提供一个可重复执行的静态安全扫描步骤，阻断新增本机浏览器自动化依赖或绕过 ZClaw bridge 的可疑代码。扫描 MUST 覆盖新增 TS 文件与相关配置。扫描 MUST 将 `packages/zclaw` 识别为唯一允许直接访问 ZClaw bridge 的 TS 包，并 MUST 继续阻断其他包、scripts 或配置中的未授权 bridge 访问。

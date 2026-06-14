@@ -38,6 +38,10 @@ function isAllowedZClawBridgeFile(filePath: string): boolean {
   return normalizePath(filePath).startsWith("packages/zclaw/src/");
 }
 
+function isSelfHealPackage(filePath: string): boolean {
+  return normalizePath(filePath).startsWith("packages/self-heal/");
+}
+
 function readJson(filePath: string): Record<string, unknown> {
   return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
 }
@@ -80,6 +84,9 @@ for (const packageFile of [
       failures.push(`${packageFile}: 禁止依赖 ${forbidden}`);
     }
   }
+  if (normalizePath(packageFile) === "packages/self-heal/package.json" && deps.includes("@ziniao/zclaw")) {
+    failures.push(`${packageFile}: packages/self-heal 禁止依赖 @ziniao/zclaw`);
+  }
 }
 
 for (const filePath of [
@@ -90,6 +97,9 @@ for (const filePath of [
     continue;
   }
   const text = readFileSync(filePath, "utf8");
+  if (isSelfHealPackage(filePath) && text.includes("@ziniao/zclaw")) {
+    failures.push(`${filePath}: packages/self-heal 禁止 import @ziniao/zclaw`);
+  }
   for (const rule of sourceRules) {
     if (rule.pattern.test(text)) {
       failures.push(`${filePath}: ${rule.label}`);

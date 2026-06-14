@@ -7,7 +7,8 @@ export default defineConfig({
       "@ziniao/core": path.resolve(__dirname, "packages/core/src/index.ts"),
       "@ziniao/schemas": path.resolve(__dirname, "packages/schemas/src/index.ts"),
       "@ziniao/zclaw": path.resolve(__dirname, "packages/zclaw/src/index.ts"),
-      "@ziniao/flow-engine": path.resolve(__dirname, "packages/flow-engine/src/index.ts")
+      "@ziniao/flow-engine": path.resolve(__dirname, "packages/flow-engine/src/index.ts"),
+      "@ziniao/self-heal": path.resolve(__dirname, "packages/self-heal/src/index.ts")
     }
   },
   test: {
