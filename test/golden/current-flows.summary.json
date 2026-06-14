@@ -1,0 +1,101 @@
+{
+  "account_health": {
+    "id": "account_health",
+    "version": 2,
+    "enabled": true,
+    "params": ["store_name"],
+    "stepIds": [
+      "list_stores",
+      "open_store",
+      "nav_home",
+      "wait_page_load",
+      "nav_health",
+      "wait_health_page",
+      "extract_health_data",
+      "save_health_report",
+      "close_store"
+    ],
+    "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
+    "actions": ["save_json", "sleep"],
+    "extractRefs": ["@extracts/extract_account_health.js", "@extracts/nav_account_health_menu.js"],
+    "pythonValidate": { "errors": 0, "warnings": 0 }
+  },
+  "inventory_check": {
+    "id": "inventory_check",
+    "version": 3,
+    "enabled": true,
+    "params": ["store_name"],
+    "stepIds": [
+      "list_stores",
+      "open_store",
+      "nav_inventory",
+      "wait_page",
+      "extract_inventory",
+      "save_inventory",
+      "close_store"
+    ],
+    "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
+    "actions": ["save_json", "sleep"],
+    "extractRefs": ["@extracts/extract_inventory.js"],
+    "pythonValidate": { "errors": 0, "warnings": 0 }
+  },
+  "orders_overview": {
+    "id": "orders_overview",
+    "version": 2,
+    "enabled": true,
+    "params": ["store_name"],
+    "stepIds": [
+      "list_stores",
+      "open_store",
+      "nav_orders",
+      "wait_page",
+      "extract_orders",
+      "save_orders",
+      "close_store"
+    ],
+    "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
+    "actions": ["save_json", "sleep"],
+    "extractRefs": ["@extracts/extract_orders_overview.js"],
+    "pythonValidate": { "errors": 0, "warnings": 0 }
+  },
+  "switch_language": {
+    "id": "switch_language",
+    "version": 2,
+    "enabled": true,
+    "params": ["store_name", "target_lang"],
+    "stepIds": [
+      "list_stores",
+      "open_store",
+      "nav_home",
+      "detect_language",
+      "check_need_switch",
+      "report_no_switch",
+      "click_settings",
+      "wait_settings_menu",
+      "click_target_lang",
+      "wait_page_reload",
+      "verify_language",
+      "assert_switched",
+      "close_store"
+    ],
+    "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
+    "actions": ["assert", "branch", "print", "sleep"],
+    "extractRefs": [
+      "@extracts/click_settings_button.js",
+      "@extracts/click_target_language.js",
+      "@extracts/detect_language.js"
+    ],
+    "pythonValidate": { "errors": 0, "warnings": 0 }
+  },
+  "webadmin_selftest": {
+    "id": "webadmin_selftest",
+    "version": 7,
+    "enabled": false,
+    "params": ["greeting"],
+    "stepIds": ["say", "wait", "done"],
+    "tools": [],
+    "actions": ["print", "sleep"],
+    "extractRefs": [],
+    "pythonValidate": { "errors": 0, "warnings": 0 }
+  }
+}

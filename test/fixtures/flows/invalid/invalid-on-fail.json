@@ -1,0 +1,10 @@
+{
+  "id": "invalid_on_fail",
+  "name": "非法失败策略",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：非法 on_fail.action",
+  "steps": [
+    { "id": "step", "action": "print", "message": "x", "on_fail": { "action": "restart" } }
+  ]
+}

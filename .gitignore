@@ -11,5 +11,9 @@ data/
 webadmin/frontend/node_modules/
 webadmin/frontend/dist/
 
+# TypeScript workspace
+node_modules/
+packages/*/dist/
+
 # macOS
 .DS_Store

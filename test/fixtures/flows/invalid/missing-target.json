@@ -1,0 +1,10 @@
+{
+  "id": "missing_target",
+  "name": "缺失跳转目标",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：跳转目标不存在",
+  "steps": [
+    { "id": "first", "action": "goto", "target": "missing_step" }
+  ]
+}

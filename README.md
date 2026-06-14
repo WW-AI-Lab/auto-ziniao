@@ -24,6 +24,23 @@ python3 manager.py stats
 
 引擎主体零第三方依赖，Python 3.9+（macOS 自带）即可运行。（Web 管理界面为可选子工程，依赖独立安装，见下文。）
 
+## TypeScript 迁移基线（开发中）
+
+当前已进入 `docs/05-TS重构技术蓝图.md` 的 M1：契约与 TS 骨架。根目录新增 pnpm workspace 与 `packages/core`、`packages/schemas`，用于冻结 flow DSL、运行日志、自愈记录和 WebAdmin DTO 的 TypeScript schema，并提供兼容性测试。
+
+```bash
+pnpm install
+pnpm validate:baseline
+```
+
+注意：现阶段 TypeScript 只做契约校验与迁移回归基线，不是生产执行入口。日常运行、沉淀、自愈仍使用：
+
+```bash
+python3 manager.py ...
+```
+
+回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。
+
 ## Web 管理界面（可选）
 
 `webadmin/` 提供本机 Web 前后端管理：流程查看/编辑/运行、独立计划任务、运行与自愈观测、产出浏览、Agent 对话（OpenClaw gateway / agent CLI）。
@@ -81,6 +98,7 @@ heal_templates/      自愈提示词模板（可按流程定制）
 learnings/           known_issues.json 知识库 + heals.jsonl 事件流
 data/                运行时数据（logs/ output/ backups/ webadmin.db，gitignore）
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
+packages/            TypeScript 迁移基线包（core / schemas，当前仅用于校验）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 ```
@@ -93,4 +111,5 @@ AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 | [docs/02-架构设计.md](docs/02-架构设计.md) | 整体架构、模块职责、数据流 |
 | [docs/03-流程定义规范.md](docs/03-流程定义规范.md) | flow JSON 完整规范与沉淀 Checklist |
 | [docs/04-自愈机制与提示词模板.md](docs/04-自愈机制与提示词模板.md) | 自愈链路、模板定制、Agent CLI 配置 |
+| [docs/05-TS重构技术蓝图.md](docs/05-TS重构技术蓝图.md) | TypeScript/Node.js 分阶段迁移蓝图 |
 | [AGENTS.md](AGENTS.md) | 给 Agent 的工作守则 |

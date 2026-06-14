@@ -1,0 +1,11 @@
+{
+  "id": "duplicate_step_id",
+  "name": "重复步骤",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：重复步骤 id",
+  "steps": [
+    { "id": "same", "action": "print", "message": "a" },
+    { "id": "same", "action": "print", "message": "b" }
+  ]
+}
