@@ -15,7 +15,8 @@
       "@ziniao/schemas": ["packages/schemas/src/index.ts"],
       "@ziniao/zclaw": ["packages/zclaw/src/index.ts"],
       "@ziniao/flow-engine": ["packages/flow-engine/src/index.ts"],
-      "@ziniao/self-heal": ["packages/self-heal/src/index.ts"]
+      "@ziniao/self-heal": ["packages/self-heal/src/index.ts"],
+      "@ziniao/cli": ["packages/cli/src/index.ts"]
     },
     "declaration": true,
     "declarationMap": true,

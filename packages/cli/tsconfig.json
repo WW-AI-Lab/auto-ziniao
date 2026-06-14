@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../core" },
+    { "path": "../schemas" },
+    { "path": "../flow-engine" },
+    { "path": "../self-heal" }
+  ],
+  "include": ["src/**/*.ts"]
+}

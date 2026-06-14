@@ -20,6 +20,7 @@ const sourceRules: Array<{ label: string; pattern: RegExp }> = [
 
 const directBridgeRules: Array<{ label: string; pattern: RegExp }> = [
   { label: "direct ZClaw port", pattern: /9481/ },
+  { label: "direct ZClaw API key access", pattern: /ZCLAW_API_KEY|\.zclaw\/config\.json/ },
   {
     label: "direct ZClaw HTTP access",
     pattern: /\b(fetch|request|axios|http|https|urlopen)\b[\s\S]{0,120}\/zclaw\//
@@ -40,6 +41,10 @@ function isAllowedZClawBridgeFile(filePath: string): boolean {
 
 function isSelfHealPackage(filePath: string): boolean {
   return normalizePath(filePath).startsWith("packages/self-heal/");
+}
+
+function isCliPackage(filePath: string): boolean {
+  return normalizePath(filePath).startsWith("packages/cli/");
 }
 
 function readJson(filePath: string): Record<string, unknown> {
@@ -87,6 +92,9 @@ for (const packageFile of [
   if (normalizePath(packageFile) === "packages/self-heal/package.json" && deps.includes("@ziniao/zclaw")) {
     failures.push(`${packageFile}: packages/self-heal 禁止依赖 @ziniao/zclaw`);
   }
+  if (normalizePath(packageFile) === "packages/cli/package.json" && deps.includes("@ziniao/zclaw")) {
+    failures.push(`${packageFile}: packages/cli 禁止直接依赖 @ziniao/zclaw`);
+  }
 }
 
 for (const filePath of [
@@ -99,6 +107,9 @@ for (const filePath of [
   const text = readFileSync(filePath, "utf8");
   if (isSelfHealPackage(filePath) && text.includes("@ziniao/zclaw")) {
     failures.push(`${filePath}: packages/self-heal 禁止 import @ziniao/zclaw`);
+  }
+  if (isCliPackage(filePath) && text.includes("@ziniao/zclaw")) {
+    failures.push(`${filePath}: packages/cli 禁止 import @ziniao/zclaw`);
   }
   for (const rule of sourceRules) {
     if (rule.pattern.test(text)) {

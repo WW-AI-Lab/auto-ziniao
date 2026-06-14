@@ -1,0 +1,33 @@
+{
+  "name": "@ziniao/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ziniao": "dist/bin/ziniao.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "ziniao": "node dist/bin/ziniao.js"
+  },
+  "dependencies": {
+    "@ziniao/core": "workspace:*",
+    "@ziniao/flow-engine": "workspace:*",
+    "@ziniao/schemas": "workspace:*",
+    "@ziniao/self-heal": "workspace:*",
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

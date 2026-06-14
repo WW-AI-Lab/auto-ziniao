@@ -8,9 +8,10 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal",
-    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal --pretty false",
+    "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli",
+    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli --pretty false",
     "test": "vitest run",
+    "ziniao": "tsx packages/cli/src/bin/ziniao.ts",
     "schemas:export": "tsx packages/schemas/scripts/export-json-schema.ts",
     "validate:python": "tsx scripts/validate-python-flows.ts",
     "security:scan": "tsx scripts/security-scan.ts",

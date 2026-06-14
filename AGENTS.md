@@ -28,7 +28,8 @@
 - **已完成 M2：安全出口可用**。已新增 `packages/zclaw`，作为 TypeScript 侧唯一 ZClaw bridge client；默认验证只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke` 做基线测试。
 - **已完成 M3：Flow Engine 迁移**。已新增 `packages/flow-engine`，提供 TS 侧 flow loader、静态校验 wrapper、运行时上下文、变量解析、condition/branch/goto、validate、内置 action、mock ZClaw tool dispatch、output 与 run log 兼容写入；默认验证仍为离线 mock，不得调用真实 `POST /zclaw/tools/invoke`。
 - **已完成 M4：Self-Heal 迁移**。已新增 `packages/self-heal`，提供 TS 侧错误分类、known issues、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 与离线测试；默认验证不得调用真实 Agent CLI，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`。
-- **下一阶段 M5：CLI 迁移**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围只能是 `packages/cli` 及必要测试/文档，不得顺手迁移 WebAdmin 或移除 Python engine。
+- **已完成 M5：CLI 迁移**。已新增 `packages/cli` 与 `ziniao ...` 过渡入口，兼容当前 `manager.py` 主要命令语义；默认验证仍只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`，不得调用真实 Agent CLI。
+- **下一阶段 M6：WebAdmin 后端 TS 化**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围只能是 `apps/webadmin-api` 及必要测试/文档，不得顺手移除 Python engine、移动前端或切换生产入口。
 - **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`、WebAdmin 后端/API/调度器；迁移验证前不得把生产入口从 `python3 manager.py ...` 切到 TS。
 - **后续顺序**必须是：`packages/zclaw` → `packages/flow-engine` → `packages/self-heal` → `packages/cli` → `apps/webadmin-api` → `apps/webadmin-frontend` 整理 → 双跑切换 → 移除 Python。
 - 每个阶段必须先有 OpenSpec proposal/design/tasks/spec，再实现；改变运行契约、目录结构、命令入口或安全边界时，必须同步更新 `AGENTS.md`、README 与 `docs/`。
@@ -61,6 +62,7 @@ TS 代码同样受最高安全规则约束：
 - `packages/zclaw` 是 TS 侧唯一允许直接访问 `127.0.0.1:9481` 与 `/zclaw/*` 的包；只能访问 `GET /zclaw/tools` 与 `POST /zclaw/tools/invoke`，不得提供本机浏览器 fallback。
 - `packages/flow-engine` 只能通过注入的 `FlowToolClient` 或 `packages/zclaw` adapter 调度工具；默认单测和 baseline 必须使用 mock client、临时 data root 和 no-op sleeper。
 - `packages/self-heal` 不得依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge；默认单测和 baseline 必须使用 mock Agent runner、临时 data root 和固定 clock，dry-run 只生成 `data/logs/heals/<heal_id>.json` 与 `data/logs/heals/<heal_id>_prompt.md`，不得调用真实 OpenClaw/Claude/Cursor。
+- `packages/cli` 只能做命令行参数解析、命令编排、终端输出和 exit code；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则。真实工具调度只能通过 `packages/flow-engine`，自愈只能通过 `packages/self-heal`。如果 `add-typescript-flow-pacing-policy` 后续落地，CLI 只消费 flow-engine 暴露的 pacing 能力，不在 CLI 内重复实现 pacing。
 - 新增 TS 依赖和源码必须通过安全扫描，阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令和绕过 ZClaw bridge 的可疑路径。
 
 ## 你在本仓库的三种工作模式
@@ -120,7 +122,7 @@ TS 代码同样受最高安全规则约束：
 | `packages/flow-engine/` | 目标态 Flow Engine | 仅在对应后续 change 中创建/修改；必须兼容现有 flow 语义 |
 | `packages/self-heal/` | 目标态自愈模块 | 仅在对应后续 change 中创建/修改；必须兼容 known issues 与模板 |
 | `packages/openclaw/` | 目标态 OpenClaw/Agent adapter | 不直接依赖 flow-engine |
-| `packages/cli/` | 目标态 `ziniao` CLI | 迁移完成前不得替换 `python3 manager.py` 生产入口 |
+| `packages/cli/` | 目标态 `ziniao` CLI | 双跑切换完成前不得替换 `python3 manager.py` 生产入口 |
 | `apps/webadmin-api/` | 目标态 TS WebAdmin 后端 | 仅在对应后续 change 中创建/修改；不得直接访问 ZClaw bridge |
 | `apps/webadmin-frontend/` | 目标态 WebAdmin 前端 | 迁移后复用 `packages/schemas` API 类型 |
 | `docs/` | 架构与规范文档 | 架构变更需同步更新 |
