@@ -26,7 +26,8 @@
 
 - **已完成 M1：契约与 TS 骨架**。已建立 TypeScript/Node.js workspace、`packages/core`、`packages/schemas`、schema、fixture/golden、静态验证命令。现有生产入口仍是 `python3 manager.py ...`。
 - **已完成 M2：安全出口可用**。已新增 `packages/zclaw`，作为 TypeScript 侧唯一 ZClaw bridge client；默认验证只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke` 做基线测试。
-- **下一阶段 M3：Flow Engine 迁移**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围只能是 `packages/flow-engine` 及必要测试/文档，不得顺手迁移 self-heal、CLI 或 WebAdmin。
+- **已完成 M3：Flow Engine 迁移**。已新增 `packages/flow-engine`，提供 TS 侧 flow loader、静态校验 wrapper、运行时上下文、变量解析、condition/branch/goto、validate、内置 action、mock ZClaw tool dispatch、output 与 run log 兼容写入；默认验证仍为离线 mock，不得调用真实 `POST /zclaw/tools/invoke`。
+- **下一阶段 M4：Self-Heal 迁移**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围只能是 `packages/self-heal` 及必要测试/文档，不得顺手迁移 CLI 或 WebAdmin。
 - **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`、WebAdmin 后端/API/调度器；迁移验证前不得把生产入口从 `python3 manager.py ...` 切到 TS。
 - **后续顺序**必须是：`packages/zclaw` → `packages/flow-engine` → `packages/self-heal` → `packages/cli` → `apps/webadmin-api` → `apps/webadmin-frontend` 整理 → 双跑切换 → 移除 Python。
 - 每个阶段必须先有 OpenSpec proposal/design/tasks/spec，再实现；改变运行契约、目录结构、命令入口或安全边界时，必须同步更新 `AGENTS.md`、README 与 `docs/`。
@@ -57,6 +58,7 @@ TS 代码同样受最高安全规则约束：
 - `packages/core` 只能放路径、JSON/JSONL、时间、错误类型等无浏览器副作用能力，只依赖 Node 标准库。
 - `packages/schemas` 只能放契约类型、运行时校验、JSON Schema 导出，不得读取 bridge、不得执行 flow。
 - `packages/zclaw` 是 TS 侧唯一允许直接访问 `127.0.0.1:9481` 与 `/zclaw/*` 的包；只能访问 `GET /zclaw/tools` 与 `POST /zclaw/tools/invoke`，不得提供本机浏览器 fallback。
+- `packages/flow-engine` 只能通过注入的 `FlowToolClient` 或 `packages/zclaw` adapter 调度工具；默认单测和 baseline 必须使用 mock client、临时 data root 和 no-op sleeper。
 - 新增 TS 依赖和源码必须通过安全扫描，阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令和绕过 ZClaw bridge 的可疑路径。
 
 ## 你在本仓库的三种工作模式

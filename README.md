@@ -26,24 +26,27 @@ python3 manager.py stats
 
 ## TypeScript 迁移基线（开发中）
 
-当前已完成 `docs/05-TS重构技术蓝图.md` 的 M2：安全出口可用。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas` 和 `packages/zclaw`：
+当前已完成 `docs/05-TS重构技术蓝图.md` 的 M3：Flow Engine 迁移。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw` 和 `packages/flow-engine`：
 
 - `packages/core`：路径、JSON/JSONL、时间、错误类型等无浏览器副作用能力。
 - `packages/schemas`：flow DSL、运行日志、自愈记录和 WebAdmin DTO 的 TypeScript schema。
 - `packages/zclaw`：TypeScript 侧唯一 ZClaw bridge client，负责 API key 读取、`/zclaw/*` 路径白名单、`GET /zclaw/tools`、`POST /zclaw/tools/invoke` 和最小高级封装。
+- `packages/flow-engine`：TypeScript flow loader、静态校验 wrapper、参数/变量/分支/validate/action 执行语义、mock ZClaw tool dispatch、output 和 run log 兼容写入。
 
 ```bash
 pnpm install
 pnpm validate:baseline
 ```
 
-注意：现阶段 TypeScript 只做契约校验、ZClaw client 离线单测与迁移回归基线，不是生产执行入口。下一阶段才会规划 `packages/flow-engine`。`pnpm validate:baseline` 不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实 flow，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
+注意：现阶段 TypeScript 已具备 flow-engine 离线执行和双跑验证能力，但不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、临时数据目录和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
 
 ```bash
 python3 manager.py ...
 ```
 
-回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M2，删除 `packages/zclaw` 并恢复 root scripts 与安全扫描 allowlist 即可。
+本阶段非目标：不迁移 `engine/self_heal.py`，不新增 `packages/cli`，不迁移 WebAdmin，不替换 `python3 manager.py ...`。下一阶段为 M4 `packages/self-heal`。
+
+回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M3，删除 `packages/flow-engine` 并恢复 root scripts 与 TS alias 即可。
 
 ## Web 管理界面（可选）
 
@@ -102,7 +105,7 @@ heal_templates/      自愈提示词模板（可按流程定制）
 learnings/           known_issues.json 知识库 + heals.jsonl 事件流
 data/                运行时数据（logs/ output/ backups/ webadmin.db，gitignore）
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
-packages/            TypeScript 迁移基线包（core / schemas / zclaw，当前不替换生产入口）
+packages/            TypeScript 迁移包（core / schemas / zclaw / flow-engine，当前不替换生产入口）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 ```

@@ -30,6 +30,25 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/flow-engine:
+    dependencies:
+      '@ziniao/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ziniao/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@ziniao/zclaw':
+        specifier: workspace:*
+        version: link:../zclaw
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.13.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   packages/schemas:
     dependencies:
       '@ziniao/core':
