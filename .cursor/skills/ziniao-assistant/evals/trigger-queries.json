@@ -1,0 +1,25 @@
+{
+  "说明": "description 触发测试,按 docs/optimizing-descriptions.md 的方法使用:每条 query 在干净上下文中运行 3 次,统计触发率;should_trigger=true 的要求触发率 > 0.5,false 的要求 < 0.5。split 字段是 train/validation 划分(约 60/40),只用 train 集指导修改,validation 集检验是否泛化。",
+  "queries": [
+    { "query": "打开 Rosehut 店铺看下后台有没有新订单", "should_trigger": true, "split": "train" },
+    { "query": "帮我把所有店铺的名字和 IP 列出来", "should_trigger": true, "split": "train" },
+    { "query": "去店里把上个月的结算报表导出来", "should_trigger": true, "split": "train" },
+    { "query": "用紫鸟开一下那个美国站的号,截个首页的图", "should_trigger": true, "split": "train" },
+    { "query": "刚才这个查库存的任务挺常用的,沉淀下来吧", "should_trigger": true, "split": "train" },
+    { "query": "把这个流程固化成可以重复跑的", "should_trigger": true, "split": "train" },
+    { "query": "my ziniao bridge says missing bearer token, here is my key znoc_abc, set it up and list stores", "should_trigger": true, "split": "validation" },
+    { "query": "查一下 Rosehut 待发货和退款中的订单各有几单", "should_trigger": true, "split": "validation" },
+    { "query": "save this task as a flow so it can rerun automatically", "should_trigger": true, "split": "validation" },
+    { "query": "店铺浏览器里帮我点一下那个确认收货按钮", "should_trigger": true, "split": "validation" },
+    { "query": "用 Chrome 打开 amazon.com 帮我搜个商品", "should_trigger": false, "split": "train" },
+    { "query": "写个 Playwright 脚本抓取竞品价格", "should_trigger": false, "split": "train" },
+    { "query": "帮我看看 engine/flow_engine.py 里重试逻辑怎么实现的", "should_trigger": false, "split": "train" },
+    { "query": "manager.py run orders_overview 跑失败了,看下 heals 记录是什么原因", "should_trigger": false, "split": "train" },
+    { "query": "把这段聊天记录总结保存成 markdown 文件", "should_trigger": false, "split": "train" },
+    { "query": "git 把今天的改动提交一下", "should_trigger": false, "split": "train" },
+    { "query": "webadmin 的 Dashboard 页面加个店铺数量统计卡片", "should_trigger": false, "split": "validation" },
+    { "query": "帮我写一个浏览器插件,能批量修改书签", "should_trigger": false, "split": "validation" },
+    { "query": "flows/_template.json 里 on_fail 字段都支持哪些值?", "should_trigger": false, "split": "validation" },
+    { "query": "把 docs 目录下的流程规范翻译成英文", "should_trigger": false, "split": "validation" }
+  ]
+}

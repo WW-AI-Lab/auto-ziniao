@@ -85,9 +85,9 @@ TBD - created by archiving change add-typescript-cli. Update Purpose after archi
 - **WHEN** `learnings/heals.jsonl` 不存在
 - **THEN** `ziniao heals` 以 exit code 0 提示没有自愈记录
 
-#### Scenario: cron prints Python-safe transition warning
+#### Scenario: cron prints production ziniao commands (M7)
 - **WHEN** 用户执行 `ziniao cron`
-- **THEN** CLI 输出调度建议，并明确 M5 尚未切换生产入口，现有生产 crontab 仍应继续使用 `python3 manager.py run`，直到双跑切换完成
+- **THEN** CLI 输出调度建议，使用 `pnpm ziniao run <flow_id>` 作为 crontab 命令，不包含 Python fallback 文案
 
 ### Requirement: CLI safety boundary
 系统 SHALL 保证 `packages/cli` 不成为新的浏览器或 bridge 网络出口。CLI MUST NOT 直接访问 `127.0.0.1:9481`、`/zclaw/tools` 或 `/zclaw/tools/invoke`；MUST NOT 读取 ZClaw API key；MUST NOT 打开本机 Chrome/Safari/Edge/Firefox/Chromium；MUST NOT 引入 Playwright、Selenium、Puppeteer、browser-use 或 `webbrowser` fallback。
@@ -111,6 +111,6 @@ TBD - created by archiving change add-typescript-cli. Update Purpose after archi
 - **WHEN** 用户执行 `pnpm validate:baseline`
 - **THEN** CLI 的 typecheck、单测、构建产物和安全边界与其他 TS 包一并验证
 
-#### Scenario: Python production entry remains valid
-- **WHEN** M5 实现完成后用户执行 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`
-- **THEN** 命令仍走现有 Python 入口，并且不依赖 `packages/cli` 构建产物
+#### Scenario: CLI is sole production entry (M7)
+- **WHEN** M7 完成后用户执行 `pnpm ziniao list` 和 `pnpm ziniao validate orders_overview`
+- **THEN** 命令通过 TS CLI 执行，Python 入口已移除；历史恢复通过 git（commit `68d7db8a`）

@@ -21,7 +21,7 @@ importers:
         specifier: ^4.0.14
         version: 4.1.8(@types/node@24.13.2)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))
 
-  apps/webadmin-api:
+  apps/api:
     dependencies:
       '@fastify/static':
         specifier: ^8.3.0
@@ -52,7 +52,7 @@ importers:
         specifier: ^4.0.14
         version: 4.1.8(@types/node@24.13.2)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(tsx@4.22.4))
 
-  apps/webadmin-frontend:
+  apps/web:
     dependencies:
       '@ant-design/icons':
         specifier: ^6.1.0

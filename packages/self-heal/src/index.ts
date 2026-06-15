@@ -640,7 +640,7 @@ function buildPromptPrefix(): string {
     "2. 只能通过紫鸟店铺浏览器环境诊断，不得改用本机浏览器",
     "3. 找到根因：页面结构变化、选择器失效、超时、认证过期或环境问题",
     "4. 修复流程定义 JSON 或 extracts/ 下的提取脚本",
-    "5. 重新执行修复后的流程验证：cd {scripts_dir} && python3 manager.py run {flow_id} -v --no-heal",
+    "5. 重新执行修复后的流程验证：cd {scripts_dir} && pnpm ziniao run {flow_id} -v --no-heal",
     "6. 将修复方案写入 {scripts_dir}/learnings/known_issues.json",
     "",
     "## 失败上下文",
@@ -660,8 +660,8 @@ function buildPromptFooter(): string {
   return [
     "## 修复后必须执行（固化闭环）",
     "1. 更新 {scripts_dir}/flows/{flow_id}.json 或对应的 extracts/*.js（修复根因，版本号 version +1）",
-    "2. 校验: python3 manager.py validate {flow_id}",
-    "3. 验证: python3 manager.py run {flow_id} -v --no-heal（必须真实跑通）",
+    "2. 校验: pnpm ziniao validate {flow_id}",
+    "3. 验证: pnpm ziniao run {flow_id} -v --no-heal（必须真实跑通）",
     "4. 将修复写入 {scripts_dir}/learnings/known_issues.json 的 issues 数组",
     "5. 通知用户：修复了什么、根因、验证结果"
   ].join("\n");

@@ -1,15 +1,5 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-.pytest_cache/
-
 # 运行时数据（日志/产出/备份/数据库）
 data/
-
-# 前端依赖与构建产物（dist 由 npm run build 重新生成）
-webadmin/frontend/node_modules/
-webadmin/frontend/dist/
 
 # TypeScript workspace
 node_modules/
@@ -18,3 +8,6 @@ apps/*/dist/
 
 # macOS
 .DS_Store
+
+# IDE 本地配置（含绝对路径，不应提交）
+.qoder/settings.local.json

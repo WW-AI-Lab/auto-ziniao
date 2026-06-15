@@ -18,8 +18,8 @@
       "@ziniao/flow-engine": ["packages/flow-engine/src/index.ts"],
       "@ziniao/self-heal": ["packages/self-heal/src/index.ts"],
       "@ziniao/cli": ["packages/cli/src/index.ts"],
-      "@ziniao/webadmin-api": ["apps/webadmin-api/src/index.ts"],
-      "@ziniao/webadmin-frontend": ["apps/webadmin-frontend/src/main.tsx"]
+      "@ziniao/api": ["apps/api/src/index.ts"],
+      "@ziniao/web": ["apps/web/src/main.tsx"]
     },
     "declaration": true,
     "declarationMap": true,

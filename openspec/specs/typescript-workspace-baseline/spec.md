@@ -3,19 +3,19 @@
 ## Purpose
 TBD - created by archiving change establish-typescript-contract-baseline. Update Purpose after archive.
 ## Requirements
-### Requirement: TypeScript workspace 并行存在
-系统 SHALL 新增 TypeScript/Node.js workspace 基线，用于承载后续 `packages/*`，并 MUST 与现有 Python 运行时并行存在。本阶段新增的 workspace MUST NOT 替换 `python3 manager.py`、`engine/*.py` 或 WebAdmin 当前运行入口。
+### Requirement: TypeScript workspace 基线
+系统 SHALL 提供 TypeScript/Node.js workspace 基线，承载 `packages/*` 和 `apps/*`。M7 后 Python 运行时已移除，workspace 为唯一生产运行基础。
 
-#### Scenario: Python CLI 不受影响
-- **WHEN** 实现阶段完成 workspace 初始化后用户执行 `python3 manager.py validate orders_overview`
-- **THEN** 命令仍按现有 Python 引擎路径完成校验，不依赖 TS 构建产物
+#### Scenario: TS workspace 是唯一生产入口 (M7)
+- **WHEN** M7 完成后用户执行 `pnpm ziniao validate orders_overview`
+- **THEN** 命令通过 TS workspace 执行；Python 入口已移除，历史恢复通过 git（commit `68d7db8a`）
 
 #### Scenario: TS workspace 可独立验证
 - **WHEN** 用户安装 Node workspace 依赖并执行 TS 校验命令
 - **THEN** typecheck/test/build 在 `packages/*` 范围内运行，不启动 ZClaw bridge、不打开店铺浏览器
 
 ### Requirement: 包边界最小化
-系统 SHALL 按迁移阶段维护最小 TypeScript 包与应用边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 已新增 `packages/flow-engine`；M4 已新增 `packages/self-heal`；M5 已新增 `packages/cli`；M6 已新增 `apps/webadmin-api`；本阶段 SHALL 在此基础上新增 `apps/webadmin-frontend`。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度；`packages/self-heal` MUST 只实现错误分类、known issues、prompt/template rendering、cooldown、heal event log 和 Agent CLI adapter；`packages/cli` MUST 只实现命令行参数解析、命令编排、终端输出和 exit code；`apps/webadmin-api` MUST 只实现 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；`apps/webadmin-frontend` MUST 只实现 WebAdmin React frontend。系统 MUST NOT 在本阶段删除 Python engine、替换 `python3 manager.py` 生产入口或移除 Python WebAdmin 后端。
+系统 SHALL 按迁移阶段维护最小 TypeScript 包与应用边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 已新增 `packages/flow-engine`；M4 已新增 `packages/self-heal`；M5 已新增 `packages/cli`；M6 已新增 `apps/webadmin-api`；M7 已新增 `apps/webadmin-frontend` 并移除 Python 运行时。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度；`packages/self-heal` MUST 只实现错误分类、known issues、prompt/template rendering、cooldown、heal event log 和 Agent CLI adapter；`packages/cli` MUST 只实现命令行参数解析、命令编排、终端输出和 exit code；`apps/webadmin-api` MUST 只实现 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；`apps/webadmin-frontend` MUST 只实现 WebAdmin React frontend。M7 后 Python 运行时已移除，仓库为 TS-only 生产状态。
 
 #### Scenario: core 与 schemas 无浏览器副作用
 - **WHEN** 审查 `packages/core` 与 `packages/schemas`

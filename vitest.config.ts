@@ -11,8 +11,8 @@ export default defineConfig({
       "@ziniao/flow-engine": path.resolve(__dirname, "packages/flow-engine/src/index.ts"),
       "@ziniao/self-heal": path.resolve(__dirname, "packages/self-heal/src/index.ts"),
       "@ziniao/cli": path.resolve(__dirname, "packages/cli/src/index.ts"),
-      "@ziniao/webadmin-api": path.resolve(__dirname, "apps/webadmin-api/src/index.ts"),
-      "@ziniao/webadmin-frontend": path.resolve(__dirname, "apps/webadmin-frontend/src/main.tsx")
+      "@ziniao/api": path.resolve(__dirname, "apps/api/src/index.ts"),
+      "@ziniao/web": path.resolve(__dirname, "apps/web/src/main.tsx")
     }
   },
   test: {

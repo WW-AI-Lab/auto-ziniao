@@ -280,8 +280,8 @@ describe("ziniao CLI", () => {
     expect((await run(repo, ["heals"])).stdout).toContain("skipped");
     expect((await run(repo, ["stats"])).stdout).toContain("成功");
     const cron = await run(repo, ["cron"]);
-    expect(cron.stdout).toContain("python3 manager.py run scheduled");
-    expect(cron.stdout).toContain("M5 尚未切换生产入口");
+    expect(cron.stdout).toContain("pnpm ziniao run scheduled");
+    expect(cron.stdout).toContain("建议的 crontab 配置");
   });
 });
 

@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   FlowDefinition,
@@ -74,14 +73,11 @@ describe("flow contract schemas", () => {
     }
   });
 
-  it("agrees with Python validate for current flows", () => {
+  it("validates all current flows via TS schema and contract", () => {
     for (const filePath of currentFlowFiles()) {
       const flowId = path.basename(filePath, ".json");
-      const result = spawnSync("python3", ["manager.py", "validate", flowId], {
-        cwd: repoRoot,
-        encoding: "utf8"
-      });
-      expect(result.status, `${flowId}: ${result.stdout}${result.stderr}`).toBe(0);
+      const result = validateFlowContract(readJson(filePath), { repoRoot });
+      expect(result.ok, `${flowId} should pass TS contract validation`).toBe(true);
     }
   });
 

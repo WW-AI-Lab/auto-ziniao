@@ -1,7 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -141,12 +140,7 @@ describe("flow loader, validator, and params", () => {
       "webadmin_selftest"
     ]) {
       const tsResult = validateFlow(loadFlow(flowId, { repoRoot }), { repoRoot });
-      const pyResult = spawnSync("python3", ["manager.py", "validate", flowId], {
-        cwd: repoRoot,
-        encoding: "utf8"
-      });
-      expect(tsResult.ok).toBe(true);
-      expect(pyResult.status, `${flowId}: ${pyResult.stdout}${pyResult.stderr}`).toBe(0);
+      expect(tsResult.ok, `${flowId} should pass TS validation`).toBe(true);
     }
   });
 });

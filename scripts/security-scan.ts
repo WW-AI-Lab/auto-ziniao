@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -48,7 +49,7 @@ function isCliPackage(filePath: string): boolean {
 }
 
 function isWebAdminApiApp(filePath: string): boolean {
-  return normalizePath(filePath).startsWith("apps/webadmin-api/");
+  return normalizePath(filePath).startsWith("apps/api/");
 }
 
 function readJson(filePath: string): Record<string, unknown> {
@@ -100,8 +101,8 @@ for (const packageFile of [
   if (normalizePath(packageFile) === "packages/cli/package.json" && deps.includes("@ziniao/zclaw")) {
     failures.push(`${packageFile}: packages/cli 禁止直接依赖 @ziniao/zclaw`);
   }
-  if (normalizePath(packageFile) === "apps/webadmin-api/package.json" && deps.includes("@ziniao/zclaw")) {
-    failures.push(`${packageFile}: apps/webadmin-api 禁止直接依赖 @ziniao/zclaw`);
+  if (normalizePath(packageFile) === "apps/api/package.json" && deps.includes("@ziniao/zclaw")) {
+    failures.push(`${packageFile}: apps/api 禁止直接依赖 @ziniao/zclaw`);
   }
 }
 
@@ -121,7 +122,7 @@ for (const filePath of [
     failures.push(`${filePath}: packages/cli 禁止 import @ziniao/zclaw`);
   }
   if (isWebAdminApiApp(filePath) && text.includes("@ziniao/zclaw")) {
-    failures.push(`${filePath}: apps/webadmin-api 禁止 import @ziniao/zclaw`);
+    failures.push(`${filePath}: apps/api 禁止 import @ziniao/zclaw`);
   }
   for (const rule of sourceRules) {
     if (rule.pattern.test(text)) {
@@ -144,6 +145,26 @@ if (failures.length > 0) {
     console.error(`- ${failure}`);
   }
   process.exit(1);
+}
+
+// M7: Python regression guard - ensure no tracked .py or requirements.txt in active tree
+try {
+  const trackedFiles = execSync("git ls-files", { cwd: repoRoot, encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const pythonFiles = trackedFiles.filter(
+    (f) => (f.endsWith(".py") || f.endsWith("requirements.txt")) && !f.startsWith("openspec/changes/archive/")
+  );
+  if (pythonFiles.length > 0) {
+    console.error("== Security scan failed ==");
+    console.error("Python 回归: tracked Python 文件或 requirements.txt 不应存在于 active tree:");
+    for (const f of pythonFiles) {
+      console.error(`  - ${f}`);
+    }
+    process.exit(1);
+  }
+} catch {
+  // git not available — skip Python regression check
 }
 
 console.log("== Security scan ok ==");

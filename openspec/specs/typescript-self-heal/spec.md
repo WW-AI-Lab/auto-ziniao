@@ -10,9 +10,9 @@ TBD - created by archiving change add-typescript-self-heal. Update Purpose after
 - **WHEN** 扫描 `packages/self-heal/src`
 - **THEN** 不存在直接 ZClaw bridge HTTP 调用、ZClaw API key 读取、本机浏览器打开命令或浏览器自动化依赖
 
-#### Scenario: Python 生产入口不变
-- **WHEN** M4 实现完成后用户执行 `python3 manager.py list`
-- **THEN** 命令仍走现有 Python 入口，并且不依赖 `packages/self-heal` 构建产物
+#### Scenario: Self-heal 通过 CLI 触发 (M7)
+- **WHEN** M7 完成后用户执行 `pnpm ziniao run` 遇到可恢复错误
+- **THEN** self-heal 由 TS flow-engine 和 `packages/self-heal` 触发；Python 入口已移除
 
 ### Requirement: Error classification compatibility
 系统 SHALL 提供与 Python `classify_error()` 兼容的错误分类能力。分类 MUST 至少返回 `auth_failed`、`timeout`、`element_not_found`、`nav_failed`、`extract_failed`、`bridge_down`、`generic`。当失败上下文显式提供合法 `heal_context` 时，系统 MUST 优先使用该类型；否则 MUST 根据 error、step id 和 tool name 分类。

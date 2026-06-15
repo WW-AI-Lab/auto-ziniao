@@ -85,7 +85,7 @@ export function createCliApp(deps: CliDependencies = {}): CliApp {
 
   program
     .name("ziniao")
-    .description("紫鸟自动化引擎 TypeScript CLI（M5 过渡入口）")
+    .description("紫鸟自动化引擎 CLI")
     .exitOverride()
     .configureOutput({
       writeOut: stdout,
@@ -524,11 +524,10 @@ function cmdCron(ctx: CliContext): number {
     ctx.stdout("没有配置了调度计划的流程\n");
     return 0;
   }
-  ctx.stdout("\nM5 尚未切换生产入口；生产 crontab 仍应继续使用 python3 manager.py run，直到双跑切换完成。\n");
-  ctx.stdout("建议的 crontab 配置:\n\n");
+  ctx.stdout("\n建议的 crontab 配置:\n\n");
   for (const flow of flows) {
     ctx.stdout(
-      `${flow.schedule}  cd ${ctx.repoRoot} && python3 manager.py run ${flow.id} >> data/logs/cron_${flow.id}.log 2>&1\n`
+      `${flow.schedule}  cd ${ctx.repoRoot} && pnpm ziniao run ${flow.id} >> data/logs/cron_${flow.id}.log 2>&1\n`
     );
   }
   ctx.stdout("\n");

@@ -1,5 +1,5 @@
 ## Description: <br>
-Control Ziniao Browser via the local Ziniao bridge by discovering allowed tools with GET /zclaw/tools and invoking them through POST /zclaw/tools/invoke with API-key authentication. <br>
+Control Ziniao Browser via the local Ziniao bridge by discovering allowed tools with GET /zclaw/tools and invoking them through POST /zclaw/tools/invoke with API-key authentication, and distill successfully completed multi-step tasks into repeatable flow definitions. <br>
 
 This skill is ready for commercial/non-commercial use. <br>
 

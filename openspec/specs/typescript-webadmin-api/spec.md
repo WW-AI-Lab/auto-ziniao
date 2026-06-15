@@ -4,15 +4,15 @@
 TBD - created by archiving change add-typescript-webadmin-api. Update Purpose after archive.
 ## Requirements
 ### Requirement: WebAdmin API app package and local server
-系统 SHALL 新增 TypeScript 应用 `apps/webadmin-api`，用于承载 M6 WebAdmin 后端。该应用 MUST 使用 Fastify 作为 HTTP 服务框架，MUST 默认只监听 `127.0.0.1`，MUST NOT 提供绑定 `0.0.0.0` 的配置或命令行开关，MUST NOT 替换 `python3 manager.py ...` 生产入口。
+系统 SHALL 新增 TypeScript 应用 `apps/webadmin-api`，用于承载 M6 WebAdmin 后端。该应用 MUST 使用 Fastify 作为 HTTP 服务框架，MUST 默认只监听 `127.0.0.1`，MUST NOT 提供绑定 `0.0.0.0` 的配置或命令行开关。M7 后该应用为唯一 WebAdmin 后端（Python WebAdmin 已移除）。
 
 #### Scenario: local-only server binding
 - **WHEN** 用户启动 `apps/webadmin-api`
 - **THEN** 服务监听地址为 `127.0.0.1`，并且配置中不存在允许绑定 `0.0.0.0` 的选项
 
-#### Scenario: Python production entry remains unchanged
-- **WHEN** M6 实现完成后用户执行 `python3 manager.py list`
-- **THEN** 命令仍通过现有 Python 入口执行，不依赖 `apps/webadmin-api` 构建产物
+#### Scenario: WebAdmin API is sole backend (M7)
+- **WHEN** M7 完成后用户启动 WebAdmin
+- **THEN** 通过 `pnpm --filter @ziniao/webadmin-api start` 启动唯一 WebAdmin 后端；Python WebAdmin 已移除
 
 ### Requirement: WebAdmin API safety boundary
 `apps/webadmin-api` SHALL NOT become a browser automation or direct ZClaw bridge outlet. It MUST NOT directly access `127.0.0.1:9481`, `/zclaw/tools`, `/zclaw/tools/invoke`, `ZCLAW_API_KEY` or `~/.zclaw/config.json`; MUST NOT open Chrome/Safari/Edge/Firefox/Chromium; MUST NOT depend on Playwright/Selenium/Puppeteer/browser-use; and MUST NOT provide any local-browser fallback when bridge-dependent execution fails.

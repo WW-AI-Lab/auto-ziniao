@@ -114,9 +114,9 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **WHEN** CLI 测试覆盖失败后 self-heal 触发
 - **THEN** 测试使用 mock Agent runner 或 dry-run，验证 context/prompt/event 语义，而不调用真实 OpenClaw/Claude/Cursor
 
-#### Scenario: CLI does not replace Python baseline
-- **WHEN** M5 baseline 执行完成
-- **THEN** `python3 manager.py list` 与 `python3 manager.py validate orders_overview` 仍作为生产入口兼容验证保留
+#### Scenario: CLI is production baseline (M7 supersedes M5 transition)
+- **WHEN** M7 Python 清零完成后执行 baseline
+- **THEN** `pnpm ziniao list` 与 `pnpm ziniao validate orders_overview` 作为生产入口验证；Python 入口已移除，历史恢复通过 git（commit `68d7db8a`）
 
 ### Requirement: TS WebAdmin API offline baseline
 系统 SHALL 将 TS WebAdmin API 的离线测试纳入兼容性基线。该基线 MUST 覆盖 Fastify route/service、WebAdmin DTO schema、SQLite DAO、schedule trigger 计算、scheduler tick、manual run 状态、chat SSE 事件、静态前端托管 fallback 和安全路径校验。默认测试 MUST 使用临时 repo/data root、mock tool client、mock Agent runner、fixed clock 和 no-op sleeper，MUST NOT 连接真实 ZClaw bridge、MUST NOT 执行真实 flow、MUST NOT 调用真实 Agent CLI。
