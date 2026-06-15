@@ -47,6 +47,10 @@ function isCliPackage(filePath: string): boolean {
   return normalizePath(filePath).startsWith("packages/cli/");
 }
 
+function isWebAdminApiApp(filePath: string): boolean {
+  return normalizePath(filePath).startsWith("apps/webadmin-api/");
+}
+
 function readJson(filePath: string): Record<string, unknown> {
   return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
 }
@@ -81,7 +85,8 @@ const failures: string[] = [];
 
 for (const packageFile of [
   path.join(repoRoot, "package.json"),
-  ...walk(path.join(repoRoot, "packages")).filter((file) => file.endsWith("package.json"))
+  ...walk(path.join(repoRoot, "packages")).filter((file) => file.endsWith("package.json")),
+  ...walk(path.join(repoRoot, "apps")).filter((file) => file.endsWith("package.json"))
 ]) {
   const deps = packageDeps(readJson(packageFile));
   for (const forbidden of forbiddenPackages) {
@@ -95,10 +100,14 @@ for (const packageFile of [
   if (normalizePath(packageFile) === "packages/cli/package.json" && deps.includes("@ziniao/zclaw")) {
     failures.push(`${packageFile}: packages/cli 禁止直接依赖 @ziniao/zclaw`);
   }
+  if (normalizePath(packageFile) === "apps/webadmin-api/package.json" && deps.includes("@ziniao/zclaw")) {
+    failures.push(`${packageFile}: apps/webadmin-api 禁止直接依赖 @ziniao/zclaw`);
+  }
 }
 
 for (const filePath of [
   ...walk(path.join(repoRoot, "packages")),
+  ...walk(path.join(repoRoot, "apps")),
   ...walk(path.join(repoRoot, "scripts"))
 ]) {
   if (isSecurityScan(filePath)) {
@@ -110,6 +119,9 @@ for (const filePath of [
   }
   if (isCliPackage(filePath) && text.includes("@ziniao/zclaw")) {
     failures.push(`${filePath}: packages/cli 禁止 import @ziniao/zclaw`);
+  }
+  if (isWebAdminApiApp(filePath) && text.includes("@ziniao/zclaw")) {
+    failures.push(`${filePath}: apps/webadmin-api 禁止 import @ziniao/zclaw`);
   }
   for (const rule of sourceRules) {
     if (rule.pattern.test(text)) {

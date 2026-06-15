@@ -29,8 +29,9 @@
 - **已完成 M3：Flow Engine 迁移**。已新增 `packages/flow-engine`，提供 TS 侧 flow loader、静态校验 wrapper、运行时上下文、变量解析、condition/branch/goto、validate、内置 action、mock ZClaw tool dispatch、output 与 run log 兼容写入；默认验证仍为离线 mock，不得调用真实 `POST /zclaw/tools/invoke`。
 - **已完成 M4：Self-Heal 迁移**。已新增 `packages/self-heal`，提供 TS 侧错误分类、known issues、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 与离线测试；默认验证不得调用真实 Agent CLI，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`。
 - **已完成 M5：CLI 迁移**。已新增 `packages/cli` 与 `ziniao ...` 过渡入口，兼容当前 `manager.py` 主要命令语义；默认验证仍只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`，不得调用真实 Agent CLI。
-- **下一阶段 M6：WebAdmin 后端 TS 化**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围只能是 `apps/webadmin-api` 及必要测试/文档，不得顺手移除 Python engine、移动前端或切换生产入口。
-- **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`、WebAdmin 后端/API/调度器；迁移验证前不得把生产入口从 `python3 manager.py ...` 切到 TS。
+- **已完成 M6：WebAdmin 后端 TS 化**。已新增 `apps/webadmin-api`，提供 Fastify REST/SSE API、SQLite WebAdmin 自有状态、调度器、chat SSE、静态前端 dist 托管、离线测试与安全扫描；默认验证仍只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`，不得调用真实 Agent CLI。
+- **下一阶段：WebAdmin 前端整理与双跑切换准备**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围优先是 `apps/webadmin-frontend`、API 类型复用和双跑验证，不得顺手移除 Python engine 或切换生产入口。
+- **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`；未经双跑验证和入口切换 change，不得把生产入口从 `python3 manager.py ...` 切到 TS，不得把当前 Python WebAdmin 生产链路切到 `apps/webadmin-api`。
 - **后续顺序**必须是：`packages/zclaw` → `packages/flow-engine` → `packages/self-heal` → `packages/cli` → `apps/webadmin-api` → `apps/webadmin-frontend` 整理 → 双跑切换 → 移除 Python。
 - 每个阶段必须先有 OpenSpec proposal/design/tasks/spec，再实现；改变运行契约、目录结构、命令入口或安全边界时，必须同步更新 `AGENTS.md`、README 与 `docs/`。
 - 回滚基线：M1 的 TS 工作区应可通过删除根级 Node workspace 文件与 `packages/*` 回到纯 Python 运行形态；回滚后 `python3 manager.py list` 与 `python3 manager.py validate orders_overview` 仍应可运行。
@@ -52,7 +53,7 @@
 - Schema：Zod + `zod-to-json-schema`，TypeScript 类型与运行时校验必须同源。
 - CLI：`commander`，目标命令为 `ziniao ...`，兼容当前 `manager.py` 命令语义。
 - Web 后端：迁移目标为 Fastify + SQLite，默认仅监听 `127.0.0.1`，禁止提供 `0.0.0.0` 绑定开关。
-- SQLite：优先 `better-sqlite3`；如 native addon 风险不可接受，再评估 `node:sqlite` 或 `sqlite3`。
+- SQLite：优先 `better-sqlite3`；如 native addon 风险不可接受，再评估 `node:sqlite` 或 `sqlite3`。M6 当前因 pnpm 禁用 native build script 导致 `better-sqlite3` binding 不可用，已按设计回退到 Node 24 内置 `node:sqlite`。
 - 前端：保留 React + Vite + TypeScript + antd + `@ant-design/x`，迁移后位于 `apps/webadmin-frontend`。
 
 TS 代码同样受最高安全规则约束：
@@ -63,6 +64,7 @@ TS 代码同样受最高安全规则约束：
 - `packages/flow-engine` 只能通过注入的 `FlowToolClient` 或 `packages/zclaw` adapter 调度工具；默认单测和 baseline 必须使用 mock client、临时 data root 和 no-op sleeper。
 - `packages/self-heal` 不得依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge；默认单测和 baseline 必须使用 mock Agent runner、临时 data root 和固定 clock，dry-run 只生成 `data/logs/heals/<heal_id>.json` 与 `data/logs/heals/<heal_id>_prompt.md`，不得调用真实 OpenClaw/Claude/Cursor。
 - `packages/cli` 只能做命令行参数解析、命令编排、终端输出和 exit code；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则。真实工具调度只能通过 `packages/flow-engine`，自愈只能通过 `packages/self-heal`。如果 `add-typescript-flow-pacing-policy` 后续落地，CLI 只消费 flow-engine 暴露的 pacing 能力，不在 CLI 内重复实现 pacing。
+- `apps/webadmin-api` 只能做 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则；默认单测和 baseline 必须使用 mock tool client、mock Agent runner、临时 data root、固定 clock 和 no-op sleeper。
 - 新增 TS 依赖和源码必须通过安全扫描，阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令和绕过 ZClaw bridge 的可疑路径。
 
 ## 你在本仓库的三种工作模式

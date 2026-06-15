@@ -26,7 +26,7 @@ python3 manager.py stats
 
 ## TypeScript 迁移基线（开发中）
 
-当前已完成 `docs/05-TS重构技术蓝图.md` 的 M5：CLI 迁移。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine`、`packages/self-heal` 和 `packages/cli`：
+当前已完成 `docs/05-TS重构技术蓝图.md` 的 M6：WebAdmin 后端 TS 化。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine`、`packages/self-heal`、`packages/cli` 和 `apps/webadmin-api`：
 
 - `packages/core`：路径、JSON/JSONL、时间、错误类型等无浏览器副作用能力。
 - `packages/schemas`：flow DSL、运行日志、自愈记录和 WebAdmin DTO 的 TypeScript schema。
@@ -34,13 +34,14 @@ python3 manager.py stats
 - `packages/flow-engine`：TypeScript flow loader、静态校验 wrapper、参数/变量/分支/validate/action 执行语义、mock ZClaw tool dispatch、output 和 run log 兼容写入。
 - `packages/self-heal`：TypeScript 自愈包，提供错误分类、known issues 命中、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 和 mock runner 离线测试。
 - `packages/cli`：TypeScript 过渡 CLI，提供 `ziniao ...` 命令并聚合 flow-engine 与 self-heal。
+- `apps/webadmin-api`：TypeScript WebAdmin 后端，提供 Fastify REST/SSE API、SQLite WebAdmin 自有状态、调度器、chat SSE 与静态前端 dist 托管。
 
 ```bash
 pnpm install
 pnpm validate:baseline
 ```
 
-注意：现阶段 TypeScript 已具备 flow-engine 离线执行、self-heal dry-run、`ziniao ...` 过渡 CLI 和双跑验证基础能力，但还不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、mock Agent runner、临时数据目录、固定 clock 和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，不得调用真实 OpenClaw/Claude/Cursor Agent CLI，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
+注意：现阶段 TypeScript 已具备 flow-engine 离线执行、self-heal dry-run、`ziniao ...` 过渡 CLI、TS WebAdmin API 和双跑验证基础能力，但还不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、mock Agent runner、临时数据目录、固定 clock 和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，不得调用真实 OpenClaw/Claude/Cursor Agent CLI，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
 
 ```bash
 python3 manager.py ...
@@ -55,9 +56,26 @@ pnpm ziniao validate orders_overview
 pnpm ziniao run webadmin_selftest -p greeting=hello --no-heal
 ```
 
-本阶段非目标：不迁移 WebAdmin，不替换 `python3 manager.py ...`，不移除 Python engine。下一阶段为 M6 WebAdmin 后端 TS 化。
+M6 完成后仍不替换 `python3 manager.py ...`，不移除 Python engine，也不移动当前 WebAdmin 前端。下一阶段是 `apps/webadmin-frontend` 整理与 WebAdmin 双跑切换准备。
 
-回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件与 `packages/` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M5，删除 `packages/cli` 并恢复 root scripts、TS alias 与 security scan 改动即可。回滚后验证 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`。
+回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件、`packages/` 与 `apps/webadmin-api` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M6，删除 `apps/webadmin-api` 并恢复 root scripts、TS alias、workspace 与 security scan 改动即可。回滚后验证 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`。
+
+### TypeScript WebAdmin API（M6，过渡能力）
+
+`apps/webadmin-api` 是 TS WebAdmin 后端能力，不替换当前 Python WebAdmin 生产链路。开发启动：
+
+```bash
+pnpm webadmin:api
+# 默认 http://127.0.0.1:9482
+```
+
+边界：
+
+- 只监听 `127.0.0.1`，代码不提供 `0.0.0.0` 绑定开关。
+- 不直接访问 ZClaw bridge，不读取 ZClaw API key，不打开本机浏览器。
+- 默认测试使用 mock tool client、mock Agent runner、临时 data root，不执行真实 flow。
+- 静态前端仍托管当前 `webadmin/frontend/dist`；本阶段不创建 `apps/webadmin-frontend`。
+- SQLite 使用 Node 24 内置 `node:sqlite`。原因是当前 pnpm 安装策略阻止 native build script，`better-sqlite3` binding 不可用；该替代符合 M6 design 的 native addon 风险回退方案。
 
 ## Web 管理界面（可选）
 
@@ -117,6 +135,7 @@ learnings/           known_issues.json 知识库 + heals.jsonl 事件流
 data/                运行时数据（logs/ output/ backups/ webadmin.db，gitignore）
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
 packages/            TypeScript 迁移包（core / schemas / zclaw / flow-engine / self-heal / cli，当前不替换生产入口）
+apps/webadmin-api/   TypeScript WebAdmin 后端（M6 过渡能力，当前不替换 Python WebAdmin）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 ```
@@ -130,4 +149,6 @@ AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 | [docs/03-流程定义规范.md](docs/03-流程定义规范.md) | flow JSON 完整规范与沉淀 Checklist |
 | [docs/04-自愈机制与提示词模板.md](docs/04-自愈机制与提示词模板.md) | 自愈链路、模板定制、Agent CLI 配置 |
 | [docs/05-TS重构技术蓝图.md](docs/05-TS重构技术蓝图.md) | TypeScript/Node.js 分阶段迁移蓝图 |
+| [docs/06-TS迁移进度与路线图.md](docs/06-TS迁移进度与路线图.md) | TS 迁移状态、边界、验收与后续路线图 |
+| [docs/07-操作节奏与流程稳定性规划.md](docs/07-操作节奏与流程稳定性规划.md) | 操作节奏、限速、确认门槛与稳定性规划 |
 | [AGENTS.md](AGENTS.md) | 给 Agent 的工作守则 |

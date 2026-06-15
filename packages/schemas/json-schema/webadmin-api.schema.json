@@ -1,0 +1,792 @@
+{
+  "$ref": "#/definitions/WebAdminApi",
+  "definitions": {
+    "WebAdminApi": {
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {}
+            },
+            "trigger": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "interval"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "minutes"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "daily"
+                        },
+                        "time": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "time"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "cron"
+                        },
+                        "expr": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "expr"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "next_run_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "latest_run": {}
+          },
+          "required": [
+            "id",
+            "name",
+            "flow_id",
+            "trigger",
+            "enabled",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": true
+        },
+        "scheduleRun": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "schedule_id": {
+              "type": "string"
+            },
+            "fired_at": {
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "schedule_id",
+            "fired_at",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "chatSession": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "busy": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "agent",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": true
+        },
+        "chatMessage": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "role": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "content": {
+              "type": "string",
+              "default": ""
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "done",
+                    "failed"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "done"
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "extras": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reasoning": {
+                      "type": "string"
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id",
+            "role",
+            "created_at"
+          ],
+          "additionalProperties": true
+        },
+        "flowSummary": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "schedule": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "file": {
+              "type": "string"
+            },
+            "last_run": {
+              "anyOf": [
+                {},
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": true
+        },
+        "flowDetail": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "extracts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "exists": {
+                    "type": "boolean"
+                  },
+                  "content": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "exists"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "last_run": {
+              "anyOf": [
+                {},
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "manualRunStatus": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "output": {
+              "type": "string"
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "heal": {}
+          },
+          "required": [
+            "token",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "outputFileEntry": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mtime": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "dir"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "preview": {}
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": true
+        },
+        "outputDirectory": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "dirs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "mtime": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "preview": {}
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "mtime": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "preview": {}
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": true
+        },
+        "chatSseEvent": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "accepted"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "session_id"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "start"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "delta"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string",
+                      "default": ""
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "done"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "error"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "heartbeat"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          ]
+        },
+        "apiErrorResponse": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "details": {}
+              },
+              "required": [
+                "code",
+                "message"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schedule",
+        "scheduleRun",
+        "chatSession",
+        "chatMessage",
+        "flowSummary",
+        "flowDetail",
+        "manualRunStatus",
+        "outputFileEntry",
+        "outputDirectory",
+        "chatSseEvent",
+        "apiErrorResponse"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
