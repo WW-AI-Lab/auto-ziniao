@@ -3,14 +3,14 @@ import path from "node:path";
 
 import { Command, CommanderError, Option } from "commander";
 
-import { defaultRepoRoot, readJsonFile } from "@ziniao/core";
+import { defaultRepoRoot, readJsonFile } from "@ww-ai-lab/auto-ziniao-core";
 import {
   FlowDefinition,
   CreateFlowRequest,
   HealEventSchema,
   RunLogEntry,
   RunLogEntrySchema
-} from "@ziniao/schemas";
+} from "@ww-ai-lab/auto-ziniao-schemas";
 import {
   FlowRunFailure,
   FlowRunResult,
@@ -19,13 +19,13 @@ import {
   parseParams,
   runFlow,
   validateFlow
-} from "@ziniao/flow-engine";
+} from "@ww-ai-lab/auto-ziniao-flow-engine";
 import {
   AgentRunner,
   buildTriggerInputFromFailure,
   HealConfig,
   triggerHeal
-} from "@ziniao/self-heal";
+} from "@ww-ai-lab/auto-ziniao-self-heal";
 
 export type TextSink = (text: string) => void;
 
@@ -98,8 +98,8 @@ export function createCliApp(deps: CliDependencies = {}): CliApp {
   const program = new Command();
 
   program
-    .name("ziniao")
-    .description("紫鸟自动化引擎 CLI")
+    .name("auto-ziniao")
+    .description("Auto Ziniao flow CLI")
     .exitOverride()
     .configureOutput({
       writeOut: stdout,
@@ -323,7 +323,7 @@ async function cmdNew(flowId: string, name: string | undefined, ctx: CliContext,
     }
     const body = await response.json() as { id?: string; content?: string };
     ctx.stdout(`已创建流程: ${body.id ?? flowId}\n`);
-    ctx.stdout(`下一步: 通过 WebAdmin API 校验并运行，或使用 ziniao validate ${flowId} && ziniao run ${flowId} -v --no-heal\n`);
+    ctx.stdout(`下一步: 通过 WebAdmin API 校验并运行，或使用 auto-ziniao validate ${flowId} && auto-ziniao run ${flowId} -v --no-heal\n`);
     return 0;
   } catch (error) {
     ctx.stderr(`WebAdmin API 不可达: ${errorMessage(error)}\n`);
@@ -549,7 +549,7 @@ function cmdCron(ctx: CliContext): number {
   ctx.stdout("\n建议的 crontab 配置:\n\n");
   for (const flow of flows) {
     ctx.stdout(
-      `${flow.schedule}  cd ${ctx.repoRoot} && pnpm ziniao run ${flow.id} >> data/logs/cron_${flow.id}.log 2>&1\n`
+      `${flow.schedule}  cd ${ctx.repoRoot} && pnpm auto-ziniao run ${flow.id} >> data/logs/cron_${flow.id}.log 2>&1\n`
     );
   }
   ctx.stdout("\n");

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createFlowRunner,
+  FlowExecutionRegistry,
   FlowRunFailure,
   FlowRunSuccess,
   FlowToolClient,
@@ -13,7 +14,7 @@ import {
   runFlow,
   validateFlow
 } from "./index.js";
-import { FlowDefinition, RunLogEntrySchema } from "@ziniao/schemas";
+import { FlowDefinition, FlowRuntimeEventSchema, RunLogEntrySchema } from "@ww-ai-lab/auto-ziniao-schemas";
 
 const repoRoot = process.cwd();
 const fixedClock = { now: () => new Date("2026-06-14T03:04:05Z") };
@@ -30,6 +31,15 @@ function tempDataRoot(): string {
   const dir = mkdtempSync(path.join(tmpdir(), "ziniao-flow-engine-"));
   tempDirs.push(dir);
   return path.join(dir, "data");
+}
+
+function readFlowEvents(dataRoot: string) {
+  const file = path.join(dataRoot, "logs/flow_events.jsonl");
+  return readFileSync(file, "utf8")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => FlowRuntimeEventSchema.parse(JSON.parse(line)));
 }
 
 class MockToolClient implements FlowToolClient {
@@ -598,6 +608,152 @@ describe("run result, logs, retry, and current flow baseline", () => {
     const log = RunLogEntrySchema.parse(JSON.parse(logLine ?? "{}"));
     expect(log.flow_id).toBe("webadmin_selftest");
     expect(log.status).toBe("success");
+  });
+});
+
+describe("pacing policy runtime", () => {
+  it("applies deterministic before and after waits through the injected sleeper", async () => {
+    const waits: number[] = [];
+    const dataRoot = tempDataRoot();
+    const result = await runFlow(
+      localFlow({
+        pacing: {
+          profile: "standard",
+          defaults: { write: { afterMs: 2000 } }
+        },
+        steps: [
+          {
+            id: "write",
+            tool: "click_element",
+            risk: "write",
+            pacing: { beforeMs: 1000, reason: "test_wait" },
+            validate: { path: "ok", not_empty: true }
+          }
+        ]
+      }),
+      {
+        dataRoot,
+        sleeper: async (ms) => {
+          waits.push(ms);
+        },
+        clock: fixedClock,
+        toolClient: new MockToolClient()
+      }
+    );
+    expect(result.status).toBe("success");
+    expect(waits).toEqual([1000, 2000]);
+    expect(readFlowEvents(dataRoot).filter((event) => event.event === "pacing_wait")).toEqual([
+      expect.objectContaining({ step_id: "write", wait_ms: 1000, reason: "test_wait" }),
+      expect.objectContaining({ step_id: "write", wait_ms: 2000, reason: "test_wait" })
+    ]);
+  });
+
+  it("rejects unauthorized critical steps before invoking tools and allows explicit authorization", async () => {
+    const rejectedMock = new MockToolClient();
+    const rejectedDataRoot = tempDataRoot();
+    const criticalFlow = localFlow({
+      steps: [
+        {
+          id: "submit",
+          tool: "click_element",
+          risk: "critical",
+          confirm: { allowParam: "allow_submit" },
+          pacing: { postconditionExempt: true },
+          on_fail: { action: "retry", maxAttempts: 2, delayMs: 1 }
+        }
+      ]
+    });
+
+    const rejected = await runFlow(criticalFlow, {
+      dataRoot: rejectedDataRoot,
+      sleeper: noopSleeper,
+      clock: fixedClock,
+      toolClient: rejectedMock
+    });
+    expect(rejected.status).toBe("failed");
+    expect((rejected as FlowRunFailure).failed_step?.step_id).toBe("submit");
+    expect(rejectedMock.calls.filter((call) => call.tool === "click_element")).toHaveLength(0);
+    expect(readFlowEvents(rejectedDataRoot)).toContainEqual(
+      expect.objectContaining({ event: "confirm_rejected", step_id: "submit" })
+    );
+
+    const allowedMock = new MockToolClient();
+    const allowed = await runFlow(criticalFlow, {
+      dataRoot: tempDataRoot(),
+      params: { allow_submit: true },
+      sleeper: noopSleeper,
+      clock: fixedClock,
+      toolClient: allowedMock
+    });
+    expect(allowed.status).toBe("success");
+    expect(allowedMock.calls).toContainEqual(expect.objectContaining({ tool: "click_element" }));
+  });
+
+  it("rejects per-flow concurrency and releases store locks after failures", async () => {
+    const registry = new FlowExecutionRegistry();
+    const held = registry.acquire({
+      flowId: "local_flow",
+      storeKey: "demo_store",
+      dateKey: "2026-06-14",
+      limits: { perFlowConcurrency: 1 }
+    });
+    expect(held.ok).toBe(true);
+
+    const rejected = await runFlow(
+      localFlow({
+        pacing: { limits: { perFlowConcurrency: 1 } },
+        params: { store_name: "demo_store" },
+        steps: [{ id: "read", action: "print", message: "blocked" }]
+      }),
+      {
+        dataRoot: tempDataRoot(),
+        executionRegistry: registry,
+        sleeper: noopSleeper,
+        clock: fixedClock,
+        toolClient: new MockToolClient()
+      }
+    );
+    expect(rejected.status).toBe("failed");
+    expect((rejected as FlowRunFailure).error).toContain("per_flow_concurrency");
+    if (held.ok) {
+      held.release();
+    }
+
+    const dataRoot = tempDataRoot();
+    const failed = await runFlow(
+      localFlow({
+        pacing: { limits: { perStoreConcurrency: 1 } },
+        params: { store_name: "demo_store" },
+        steps: [{ id: "fail", action: "fail", message: "boom" }]
+      }),
+      {
+        dataRoot,
+        executionRegistry: registry,
+        sleeper: noopSleeper,
+        clock: fixedClock,
+        toolClient: new MockToolClient()
+      }
+    );
+    expect(failed.status).toBe("failed");
+    expect(readFlowEvents(dataRoot)).toContainEqual(
+      expect.objectContaining({ event: "store_lock_released", store_name: "demo_store" })
+    );
+
+    const afterRelease = await runFlow(
+      localFlow({
+        pacing: { limits: { perStoreConcurrency: 1 } },
+        params: { store_name: "demo_store" },
+        steps: [{ id: "ok", action: "print", message: "released" }]
+      }),
+      {
+        dataRoot: tempDataRoot(),
+        executionRegistry: registry,
+        sleeper: noopSleeper,
+        clock: fixedClock,
+        toolClient: new MockToolClient()
+      }
+    );
+    expect(afterRelease.status).toBe("success");
   });
 });
 

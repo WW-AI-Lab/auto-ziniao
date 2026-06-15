@@ -1,0 +1,141 @@
+.zn-rich-message {
+  width: min(820px, 100%);
+  min-width: 0;
+  color: #1f1f1f;
+}
+
+.zn-rich-message__alert,
+.zn-rich-message__reasoning,
+.zn-rich-message__tools,
+.zn-rich-message__a2ui {
+  margin-bottom: 8px;
+}
+
+.zn-rich-message__section-label {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.zn-rich-message__reasoning {
+  border: 1px solid #eceff3;
+  border-radius: 6px;
+  background: #fafbfc;
+}
+
+.zn-rich-message__reasoning-text {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  color: #595959;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.zn-rich-message__tool-list,
+.zn-rich-message__a2ui-list {
+  width: 100%;
+}
+
+.zn-rich-message__tool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid #edf0f5;
+  border-radius: 6px;
+  background: #fbfcfe;
+  font-size: 12px;
+}
+
+.zn-rich-message__tool-name {
+  margin: 0;
+}
+
+.zn-rich-message__markdown {
+  min-width: 0;
+  line-height: 1.7;
+}
+
+.zn-rich-message__markdown p {
+  margin: 0 0 10px;
+}
+
+.zn-rich-message__markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.zn-rich-message__markdown table {
+  display: block;
+  max-width: 100%;
+  margin: 8px 0;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.zn-rich-message__markdown th,
+.zn-rich-message__markdown td {
+  padding: 6px 8px;
+  border: 1px solid #d9dee7;
+  vertical-align: top;
+}
+
+.zn-rich-message__markdown th {
+  background: #f6f8fb;
+  font-weight: 600;
+}
+
+.zn-rich-message__markdown pre,
+.zn-rich-message__mermaid-source,
+.zn-a2ui-block__json {
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  background: #f7f9fc;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.zn-rich-message__markdown code {
+  font-size: 12px;
+}
+
+.zn-rich-message__markdown :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eef2f7;
+}
+
+.zn-rich-message__mermaid {
+  max-width: 100%;
+  margin: 10px 0;
+  overflow: auto;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.zn-rich-message__mermaid svg {
+  display: block;
+  max-width: 100%;
+  min-width: 320px;
+  margin: 0 auto;
+}
+
+.zn-a2ui-block {
+  max-width: 100%;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.zn-a2ui-block__paragraph {
+  margin: 6px 0 0;
+}

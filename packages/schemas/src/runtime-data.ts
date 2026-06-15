@@ -33,6 +33,29 @@ export const HealEventSchema = z
   })
   .passthrough();
 
+export const FlowRuntimeEventSchema = z
+  .object({
+    timestamp: z.string(),
+    run_id: z.string(),
+    flow_id: z.string(),
+    step_id: z.string().optional(),
+    event: z.enum([
+      "pacing_wait",
+      "confirm_rejected",
+      "budget_rejected",
+      "store_lock_wait",
+      "store_lock_acquired",
+      "store_lock_released"
+    ]).or(z.string()),
+    store_id: z.string().optional(),
+    store_name: z.string().optional(),
+    risk: z.string().optional(),
+    wait_ms: z.number().int().nonnegative().optional(),
+    reason: z.string().optional(),
+    profile: z.string().optional()
+  })
+  .passthrough();
+
 export const HealContextSchema = z
   .object({
     heal_id: z.string(),
@@ -72,6 +95,7 @@ export const KnownIssuesFileSchema = z
 
 export type RunLogEntry = z.infer<typeof RunLogEntrySchema>;
 export type HealEvent = z.infer<typeof HealEventSchema>;
+export type FlowRuntimeEvent = z.infer<typeof FlowRuntimeEventSchema>;
 export type HealContext = z.infer<typeof HealContextSchema>;
 export type KnownIssue = z.infer<typeof KnownIssueSchema>;
 export type KnownIssuesFile = z.infer<typeof KnownIssuesFileSchema>;

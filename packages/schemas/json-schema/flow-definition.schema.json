@@ -41,6 +41,189 @@
           },
           "additionalProperties": true
         },
+        "pacing": {
+          "type": "object",
+          "properties": {
+            "profile": {
+              "type": "string"
+            },
+            "jitter": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "ratio": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 0
+                }
+              },
+              "additionalProperties": true
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "perStoreConcurrency": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "perFlowConcurrency": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "maxConsecutiveFailures": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "maxRunPerDay": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "additionalProperties": true
+            },
+            "defaults": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "object",
+                  "properties": {
+                    "beforeMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "afterMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "requiresConfirm": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "postconditionExempt": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "navigate": {
+                  "type": "object",
+                  "properties": {
+                    "beforeMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "afterMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "requiresConfirm": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "postconditionExempt": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "write": {
+                  "type": "object",
+                  "properties": {
+                    "beforeMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "afterMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "requiresConfirm": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "postconditionExempt": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "critical": {
+                  "type": "object",
+                  "properties": {
+                    "beforeMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "afterMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "requiresConfirm": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "postconditionExempt": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            },
+            "budgets": {
+              "type": "object",
+              "properties": {
+                "perStoreConcurrency": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "perFlowConcurrency": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "maxConsecutiveFailures": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "maxRunPerDay": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
         "params": {
           "type": "object",
           "additionalProperties": {
@@ -102,6 +285,61 @@
                   ]
                 },
                 "default": {}
+              },
+              "risk": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "navigate",
+                  "write",
+                  "critical"
+                ]
+              },
+              "pacing": {
+                "type": "object",
+                "properties": {
+                  "beforeMs": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "afterMs": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "timeoutMs": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "requiresConfirm": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "postconditionExempt": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "confirm": {
+                "type": "object",
+                "properties": {
+                  "allowParam": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "exempt": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
               },
               "save": {
                 "type": "string"

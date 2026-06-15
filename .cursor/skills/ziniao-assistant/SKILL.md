@@ -94,7 +94,7 @@ curl -X POST http://127.0.0.1:9482/api/traces \
 - **应当沉淀**:产出数据(报表/订单/库存等)且未来会再查;是固定操作序列(切换设置、批量检查、定期导出);用户说 沉淀/固化/保存流程。
 - **不必沉淀**:临时看一眼、探索性诊断、任务失败、已有等价流程(此时通过 WebAdmin API 更新现有 flow 并 version +1,不新建重复流程)。
 
-判断为应当沉淀时:用户在场就先一句话提议并立即动手,不要只提议不动手。然后**读本 skill 目录下的 `references/flow-distill.md`**,按其中的 API-first 工作流执行(创建 flow、上传 extract、校验、运行、确认产出)。不要直接读写仓库内 flow/extract 文件,不要调用 CLI 作为沉淀步骤。刚验证过的 URL、选择器、踩坑经验只存在于本会话,不通过 WebAdmin API 固化就会丢失。
+判断为应当沉淀时:用户在场就先一句话提议并立即动手,不要只提议不动手。然后**读本 skill 目录下的 `references/flow-distill.md`**,按其中的 API-first 工作流执行(创建 flow、上传 extract、校验、运行、确认产出),并为操作类步骤补齐 `risk`、写/关键操作后置验证、`critical` 的 `confirm` 门槛和必要 `pacing`。不要直接读写仓库内 flow/extract 文件,不要调用 CLI 作为沉淀步骤。刚验证过的 URL、选择器、踩坑经验只存在于本会话,不通过 WebAdmin API 固化就会丢失。
 
 ## Gotchas(踩坑速查)
 

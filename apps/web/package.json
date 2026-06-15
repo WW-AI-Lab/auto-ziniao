@@ -1,7 +1,9 @@
 {
-  "name": "@ziniao/web",
-  "version": "0.1.0",
+  "name": "@ww-ai-lab/auto-ziniao-web",
+  "version": "0.1.1",
   "private": true,
+  "description": "Local WebAdmin frontend for Auto Ziniao.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,8 +15,10 @@
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
     "@ant-design/x": "^2.8.0",
-    "@ziniao/schemas": "workspace:*",
+    "@ant-design/x-markdown": "^2.8.0",
+    "@ww-ai-lab/auto-ziniao-schemas": "workspace:*",
     "antd": "^6.4.4",
+    "mermaid": "^11.15.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0"

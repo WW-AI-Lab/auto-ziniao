@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { ensureDir } from "@ziniao/core";
+import { ensureDir } from "@ww-ai-lab/auto-ziniao-core";
 import path from "node:path";
 
 export type ScheduleRecord = Row & {

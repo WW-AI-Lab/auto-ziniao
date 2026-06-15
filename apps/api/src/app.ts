@@ -4,24 +4,26 @@ import { spawn } from "node:child_process";
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 
-import { ensureDir, readJsonFile, readJsonLinesFile, writeJsonFile } from "@ziniao/core";
-import { validateFlow } from "@ziniao/flow-engine";
-import { AgentRunner } from "@ziniao/self-heal";
+import { ensureDir, readJsonFile, readJsonLinesFile, writeJsonFile } from "@ww-ai-lab/auto-ziniao-core";
+import { validateFlow } from "@ww-ai-lab/auto-ziniao-flow-engine";
+import { AgentRunner } from "@ww-ai-lab/auto-ziniao-self-heal";
 
-import { createConfig, getHealConfig, WebAdminConfig } from "./config.js";
+import { createConfig, getHealConfig, getWebAdminChatConfig, WebAdminConfig } from "./config.js";
 import { badRequest, conflict, notFound, ApiError } from "./errors.js";
+import { GatewayChatClient, OpenClawGatewayRpcChatClient } from "./openclaw-gateway.js";
 import { createFlowRunner } from "./runner.js";
 import { createScheduler } from "./scheduler.js";
 import { resolveSafePath, isDirectory, isFile, AllowedRoot } from "./security.js";
 import { createStorage, Storage } from "./storage.js";
 import { computeNextRun, validateTrigger, TriggerError } from "./triggers.js";
-import type { CreateFlowRequest, SaveExtractRequest } from "@ziniao/schemas";
+import type { ChatA2UIBlock, ChatExtras, ChatToolCall, CreateFlowRequest, SaveExtractRequest } from "@ww-ai-lab/auto-ziniao-schemas";
 
 export type CreateAppOptions = {
   config?: Partial<WebAdminConfig>;
   storage?: Storage;
   runner?: ReturnType<typeof createFlowRunner>;
   agentRunner?: AgentRunner;
+  chatClient?: GatewayChatClient;
   startScheduler?: boolean;
 };
 
@@ -29,6 +31,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   const config = createConfig(options.config);
   const storage = options.storage ?? createStorage(path.join(config.dataRoot, "webadmin.db"));
   const agentRunner = options.agentRunner ?? createCommandAgentRunner();
+  const chatClient = options.chatClient ?? new OpenClawGatewayRpcChatClient();
   const runner =
     options.runner ??
     createFlowRunner({
@@ -71,7 +74,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   registerFlowRoutes(app, { config, roots, runner, storage });
   registerMonitoringRoutes(app, { config, roots, storage });
   registerScheduleRoutes(app, { config, storage, scheduler });
-  registerChatRoutes(app, { config, storage, busySessions, agentRunner });
+  registerChatRoutes(app, { config, storage, busySessions, chatClient });
   await registerStaticRoutes(app, config);
   return app;
 }
@@ -440,13 +443,13 @@ function registerScheduleRoutes(
 
 function registerChatRoutes(
   app: FastifyInstance,
-  deps: { config: WebAdminConfig; storage: Storage; busySessions: Set<string>; agentRunner: AgentRunner }
+  deps: { config: WebAdminConfig; storage: Storage; busySessions: Set<string>; chatClient: GatewayChatClient }
 ) {
   app.get("/api/chat/agents", async () => {
-    const cfg = getHealConfig(deps.config.repoRoot);
+    const cfg = getWebAdminChatConfig(deps.config.repoRoot);
     return {
       default: cfg.defaultAgent,
-      items: Object.entries(cfg.agents).map(([name, agent]) => ({ name, timeout_sec: agent.timeout_sec }))
+      items: Object.entries(cfg.agents).map(([name, agent]) => ({ name, timeout_sec: agent.timeoutSec }))
     };
   });
 
@@ -455,7 +458,7 @@ function registerChatRoutes(
   }));
 
   app.post<{ Body: { title?: string; agent?: string } }>("/api/chat/sessions", async (request) => {
-    const cfg = getHealConfig(deps.config.repoRoot);
+    const cfg = getWebAdminChatConfig(deps.config.repoRoot);
     const agent = request.body?.agent ?? cfg.defaultAgent;
     if (!cfg.agents[agent]) throw badRequest(`config.json 中未配置 agent: ${agent}`);
     return deps.storage.createSession(request.body?.title?.trim() || "新会话", agent);
@@ -463,7 +466,7 @@ function registerChatRoutes(
 
   app.put<{ Params: { sid: string }; Body: { title?: string; agent?: string } }>("/api/chat/sessions/:sid", async (request) => {
     if (!deps.storage.getSession(request.params.sid)) throw notFound(`会话不存在: ${request.params.sid}`);
-    if (request.body.agent && !getHealConfig(deps.config.repoRoot).agents[request.body.agent]) {
+    if (request.body.agent && !getWebAdminChatConfig(deps.config.repoRoot).agents[request.body.agent]) {
       throw badRequest(`config.json 中未配置 agent: ${request.body.agent}`);
     }
     return deps.storage.updateSession(request.params.sid, request.body);
@@ -496,34 +499,77 @@ function registerChatRoutes(
     writeSse(reply, { type: "accepted", session_id: request.params.sid, message_id: assistantId });
     writeSse(reply, { type: "start", session_id: request.params.sid, message_id: assistantId });
     try {
-      const cfg = getHealConfig(deps.config.repoRoot).agents[String(session.agent)];
-      const result = await deps.agentRunner.run({
-        command: renderCommand(cfg?.command ?? [], {
-          prompt: content,
-          prompt_path: "",
-          session_key: `ziniao-webadmin:${request.params.sid}`
-        }),
-        timeoutMs: (cfg?.timeout_sec ?? 60) * 1000
+      const cfg = getWebAdminChatConfig(deps.config.repoRoot);
+      const agentName = String(session.agent);
+      const agent = cfg.agents[agentName];
+      if (!agent) throw badRequest(`config.json 中未配置 agent: ${agentName}`);
+      const result = await deps.chatClient.sendChat({
+        agentName,
+        agent,
+        sessionId: request.params.sid,
+        content,
+        messageId: assistantId
       });
-      if (result.exitCode === 0) {
-        const text = result.stdout || "OK";
-        writeSse(reply, { type: "delta", session_id: request.params.sid, message_id: assistantId, text });
-        deps.storage.updateMessage(assistantId, { content: text, status: "done" });
-        writeSse(reply, { type: "done", session_id: request.params.sid, message_id: assistantId, content: text });
-      } else {
-        const message = result.timedOut ? "Agent CLI timeout" : result.stderr || `Agent CLI exit ${result.exitCode}`;
-        deps.storage.updateMessage(assistantId, { status: "failed", error: message });
-        writeSse(reply, { type: "error", session_id: request.params.sid, message_id: assistantId, message });
-      }
+      const text = result.text || "OK";
+      const extras = buildChatExtras(result);
+      writeChatExtrasSse(reply, request.params.sid, assistantId, extras);
+      writeSse(reply, { type: "delta", session_id: request.params.sid, message_id: assistantId, text });
+      deps.storage.updateMessage(assistantId, { content: text, status: "done", extras });
+      writeSse(reply, { type: "done", session_id: request.params.sid, message_id: assistantId, content: text });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      deps.storage.updateMessage(assistantId, { status: "failed", error: message });
+      const extras = buildChatExtras(error);
+      writeChatExtrasSse(reply, request.params.sid, assistantId, extras);
+      deps.storage.updateMessage(assistantId, { status: "failed", error: message, extras });
       writeSse(reply, { type: "error", session_id: request.params.sid, message_id: assistantId, message });
     } finally {
       deps.busySessions.delete(request.params.sid);
       reply.raw.end();
     }
   });
+}
+
+function buildChatExtras(source: unknown): ChatExtras | undefined {
+  if (!source || typeof source !== "object") return undefined;
+  const record = source as {
+    reasoning?: unknown;
+    tools?: unknown;
+    a2ui?: unknown;
+  };
+  const extras: ChatExtras = {};
+  if (typeof record.reasoning === "string" && record.reasoning) {
+    extras.reasoning = record.reasoning;
+  }
+  if (Array.isArray(record.tools)) {
+    const tools = record.tools.filter(isChatToolCall);
+    if (tools.length) extras.tools = tools;
+  }
+  if (Array.isArray(record.a2ui)) {
+    const a2ui = record.a2ui.filter(isChatA2UIBlock);
+    if (a2ui.length) extras.a2ui = a2ui;
+  }
+  return extras.reasoning || extras.tools?.length || extras.a2ui?.length ? extras : undefined;
+}
+
+function writeChatExtrasSse(reply: FastifyReply, sessionId: string, messageId: number, extras: ChatExtras | undefined) {
+  if (!extras) return;
+  if (extras.reasoning) {
+    writeSse(reply, { type: "reasoning_delta", session_id: sessionId, message_id: messageId, text: extras.reasoning });
+  }
+  for (const tool of extras.tools ?? []) {
+    writeSse(reply, { type: "tool_call", session_id: sessionId, message_id: messageId, ...tool });
+  }
+  for (const block of extras.a2ui ?? []) {
+    writeSse(reply, { type: "a2ui", session_id: sessionId, message_id: messageId, block });
+  }
+}
+
+function isChatToolCall(value: unknown): value is ChatToolCall {
+  return !!value && typeof value === "object" && typeof (value as { name?: unknown }).name === "string";
+}
+
+function isChatA2UIBlock(value: unknown): value is ChatA2UIBlock {
+  return !!value && typeof value === "object" && typeof (value as { type?: unknown }).type === "string";
 }
 
 async function registerStaticRoutes(app: FastifyInstance, config: WebAdminConfig) {
@@ -609,6 +655,7 @@ async function flowRunDetail(
       healId,
       flowId: indexed.flow_id
     });
+    const healSummary = mergeHealDiagnostics(item.heal_summary, healEvents);
     const healFiles: Partial<HealFileStatus> = healId ? healFileStatus(deps.config.dataRoot, healId) : {};
     return {
       ...item,
@@ -620,7 +667,7 @@ async function flowRunDetail(
         ? { path: healFiles.prompt_path, available: Boolean(healFiles.prompt_available) }
         : null,
       heal_summary: {
-        ...(isRecord(item.heal_summary) ? item.heal_summary : {}),
+        ...(isRecord(healSummary) ? healSummary : {}),
         ...(healFiles.context_available !== undefined ? { context_available: healFiles.context_available } : {}),
         ...(healFiles.prompt_available !== undefined ? { prompt_available: healFiles.prompt_available } : {})
       },
@@ -741,6 +788,27 @@ function outputRefsWithAvailability(roots: Record<AllowedRoot, string>, refs: un
 
 function healIdFrom(value: unknown) {
   return isRecord(value) && typeof value.heal_id === "string" ? value.heal_id : null;
+}
+
+function mergeHealDiagnostics(summary: unknown, events: Array<Record<string, unknown>>) {
+  const merged: Record<string, unknown> = isRecord(summary) ? { ...summary } : {};
+  const event = [...events].reverse().find(isRecord);
+  if (!event) return merged;
+
+  for (const key of ["cli_exit_code", "cli_stderr", "timed_out", "command_missing"] as const) {
+    if (merged[key] === undefined && event[key] !== undefined) {
+      merged[key] = event[key];
+    }
+  }
+  if (
+    merged.error === undefined &&
+    typeof event.cli_stderr === "string" &&
+    event.cli_stderr &&
+    event.status !== "success"
+  ) {
+    merged.error = event.cli_stderr;
+  }
+  return merged;
 }
 
 function clampQueryInt(value: string | undefined, fallback: number, min: number, max: number) {

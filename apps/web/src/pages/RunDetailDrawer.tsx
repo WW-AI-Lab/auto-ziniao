@@ -47,6 +47,13 @@ export default function RunDetailDrawer({
   }, [open, runId])
 
   const heal = detail?.heal_summary as HealSummary | null | undefined
+  const hasAgentDiagnostics = Boolean(
+    heal &&
+    (heal.cli_exit_code !== undefined ||
+      heal.cli_stderr ||
+      heal.timed_out !== undefined ||
+      heal.command_missing !== undefined)
+  )
   return (
     <Drawer
       title={`运行详情: ${detail?.flow_id ?? runId ?? ''}`}
@@ -93,6 +100,24 @@ export default function RunDetailDrawer({
             <Descriptions.Item label="error_type">{heal?.error_type ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="agent">{heal?.agent ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="reason/error">{heal?.reason ?? heal?.error ?? '-'}</Descriptions.Item>
+            {hasAgentDiagnostics && (
+              <>
+                {heal?.cli_exit_code !== undefined && (
+                  <Descriptions.Item label="cli_exit_code">{heal.cli_exit_code}</Descriptions.Item>
+                )}
+                {heal?.cli_stderr && (
+                  <Descriptions.Item label="cli_stderr">
+                    <Typography.Text style={{ wordBreak: 'break-word' }}>{heal.cli_stderr}</Typography.Text>
+                  </Descriptions.Item>
+                )}
+                {heal?.timed_out !== undefined && (
+                  <Descriptions.Item label="timed_out">{String(heal.timed_out)}</Descriptions.Item>
+                )}
+                {heal?.command_missing !== undefined && (
+                  <Descriptions.Item label="command_missing">{String(heal.command_missing)}</Descriptions.Item>
+                )}
+              </>
+            )}
             <Descriptions.Item label="context">{heal?.heal_log_path ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="prompt">{heal?.prompt_path ?? '-'}</Descriptions.Item>
           </Descriptions>

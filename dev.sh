@@ -39,11 +39,11 @@ fi
 
 # ── 启动服务 ───────────────────────────────────────────
 log "启动后端 → http://127.0.0.1:$BE_PORT"
-pnpm --filter @ziniao/api dev &
+pnpm --filter @ww/api dev &
 BE_PID=$!
 
 log "启动前端 → http://localhost:$FE_PORT"
-pnpm --filter @ziniao/web dev &
+pnpm --filter @ww-ai-lab/auto-ziniao-web dev &
 FE_PID=$!
 
 # ── Ctrl+C 优雅退出 ───────────────────────────────────

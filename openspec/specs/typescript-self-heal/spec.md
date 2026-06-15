@@ -4,14 +4,14 @@
 TBD - created by archiving change add-typescript-self-heal. Update Purpose after archive.
 ## Requirements
 ### Requirement: Self-heal package boundary
-系统 SHALL 提供 TypeScript 自愈包 `packages/self-heal`，用于迁移 Python `engine/self_heal.py` 的自愈触发能力。该包 MUST 只依赖 Node 标准库、`@ziniao/core` 与 `@ziniao/schemas`，MUST NOT 依赖 `@ziniao/zclaw`，MUST NOT 直接访问 `127.0.0.1:9481`、`/zclaw/tools` 或 `/zclaw/tools/invoke`，MUST NOT 打开本机浏览器或引入 Playwright/Selenium/Puppeteer/browser-use。
+系统 SHALL 提供 TypeScript 自愈包 `packages/self-heal`，用于迁移 Python `engine/self_heal.py` 的自愈触发能力。该包 MUST 只依赖 Node 标准库、`@ww-ai-lab/auto-ziniao-core` 与 `@ww-ai-lab/auto-ziniao-schemas`，MUST NOT 依赖 `@ww-ai-lab/auto-ziniao-zclaw`，MUST NOT 直接访问 `127.0.0.1:9481`、`/zclaw/tools` 或 `/zclaw/tools/invoke`，MUST NOT 打开本机浏览器或引入 Playwright/Selenium/Puppeteer/browser-use。
 
 #### Scenario: 包不直接访问 bridge
 - **WHEN** 扫描 `packages/self-heal/src`
 - **THEN** 不存在直接 ZClaw bridge HTTP 调用、ZClaw API key 读取、本机浏览器打开命令或浏览器自动化依赖
 
 #### Scenario: Self-heal 通过 CLI 触发 (M7)
-- **WHEN** M7 完成后用户执行 `pnpm ziniao run` 遇到可恢复错误
+- **WHEN** M7 完成后用户执行 `pnpm auto-ziniao run` 遇到可恢复错误
 - **THEN** self-heal 由 TS flow-engine 和 `packages/self-heal` 触发；Python 入口已移除
 
 ### Requirement: Error classification compatibility
@@ -114,3 +114,48 @@ TBD - created by archiving change add-typescript-self-heal. Update Purpose after
 #### Scenario: missing failed step
 - **WHEN** 失败结果缺少 `failed_step`
 - **THEN** self-heal 使用 `unknown` step/tool 占位生成 prompt，而不是抛出非预期异常
+
+### Requirement: WebAdmin-consumable self-heal result metadata
+`packages/self-heal` SHALL provide self-heal trigger results and event logs that WebAdmin execution surfaces can correlate with failed flow runs. The result and event metadata MUST include `heal_id`, `flow_id`, `step_id`, `error_type`, final status or equivalent `success`/`skipped`/`dry_run` indicators, `agent`, `session_key`, `prompt_path`, `heal_log_path`, reason or error details when applicable, and MUST be safe to expose through WebAdmin without leaking secrets or full command credentials.
+
+#### Scenario: successful trigger has correlation fields
+- **WHEN** `triggerHeal()` invokes a mock Agent runner successfully for a failed `account_health` run
+- **THEN** the returned result and appended heal event include `heal_id`, `flow_id`, `step_id`, `error_type`, `agent`, `session_key`, `prompt_path` and `heal_log_path`
+
+#### Scenario: skipped trigger has reason
+- **WHEN** `triggerHeal()` skips because of a known issue, cooldown, disabled config or disabled flow semantics provided by the caller
+- **THEN** the returned result includes `skipped: true`, a stable reason and the same `heal_id`/path fields needed by WebAdmin detail views
+
+#### Scenario: Agent failure remains structured
+- **WHEN** the configured Agent runner fails, times out or is missing
+- **THEN** `triggerHeal()` returns `success: false` with a user-visible error summary and appends a structured event when quota/cooldown semantics have been consumed
+
+### Requirement: Self-heal observability remains offline and boundary-safe
+Self-heal observability support SHALL remain within the existing `packages/self-heal` safety boundary. Tests for WebAdmin-consumable metadata MUST use a mock `AgentRunner`, temporary repo/data roots and fixed clock; MUST NOT depend on `@ww-ai-lab/auto-ziniao-zclaw`; MUST NOT access `127.0.0.1:9481`; MUST NOT open a local browser; and MUST NOT call a real OpenClaw, Claude, Cursor or other Agent CLI.
+
+#### Scenario: metadata tests do not call real Agent
+- **WHEN** self-heal tests cover WebAdmin correlation metadata
+- **THEN** they use a mock runner and do not execute the configured real Agent command
+
+#### Scenario: security scan preserves package boundary
+- **WHEN** `pnpm security:scan` runs after this change is implemented
+- **THEN** `packages/self-heal` still contains no direct ZClaw bridge access, local browser open command or browser automation dependency
+
+### Requirement: Agent CLI failure diagnostics returned to callers
+系统 SHALL 在 `triggerHeal()` 调用 Agent runner 后，把 Agent CLI 失败诊断作为安全结构化字段返回给调用方。返回结果 MUST 至少在适用时包含 `cli_exit_code`、截断后的 `cli_stderr`、`timed_out`、`command_missing` 和用户可读的 `error`；这些字段 MUST 与追加到 `learnings/heals.jsonl` 的事件保持语义一致，并 MUST NOT 暴露完整 command、完整 prompt 或 credential。
+
+#### Scenario: runner non-zero exit is returned
+- **WHEN** mock `AgentRunner` 返回 `exitCode: 2` 和 `stderr: "bad agent"`
+- **THEN** `triggerHeal()` 返回 `status: "failed"`、`success: false`、`cli_exit_code: 2`、`cli_stderr: "bad agent"` 和包含失败摘要的 `error`
+
+#### Scenario: runner timeout is returned
+- **WHEN** mock `AgentRunner` 返回 `timedOut: true`
+- **THEN** `triggerHeal()` 返回 `status: "timeout"`、`success: false`、`timed_out: true` 和 timeout error 摘要
+
+#### Scenario: command missing is returned
+- **WHEN** mock `AgentRunner` 返回 `commandMissing: true`
+- **THEN** `triggerHeal()` 返回 `status: "failed"`、`success: false`、`command_missing: true` 和缺失命令的 error 摘要
+
+#### Scenario: diagnostics remain bounded
+- **WHEN** mock `AgentRunner` 返回超过 500 字符的 stderr
+- **THEN** `triggerHeal()` 返回的 `cli_stderr` 被截断到安全长度，并且不包含完整 prompt 或 command 数组

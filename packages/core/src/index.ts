@@ -19,6 +19,17 @@ export type JsonObject = Record<string, unknown>;
 const currentFile = fileURLToPath(import.meta.url);
 
 export function findRepoRoot(startDir = process.cwd()): string {
+  const found = findRepoRootOptional(startDir);
+  if (found) {
+    return found;
+  }
+  throw new ZiniaoError(
+    `无法定位仓库根目录: ${startDir}`,
+    "repo_root_not_found"
+  );
+}
+
+export function findRepoRootOptional(startDir = process.cwd()): string | undefined {
   let current = path.resolve(startDir);
   while (true) {
     if (
@@ -29,16 +40,16 @@ export function findRepoRoot(startDir = process.cwd()): string {
     }
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new ZiniaoError(
-        `无法定位仓库根目录: ${startDir}`,
-        "repo_root_not_found"
-      );
+      return undefined;
     }
     current = parent;
   }
 }
 
-export const defaultRepoRoot = findRepoRoot(path.dirname(currentFile));
+export const defaultRepoRoot =
+  findRepoRootOptional(process.cwd()) ??
+  findRepoRootOptional(path.dirname(currentFile)) ??
+  process.cwd();
 
 export function repoPath(...segments: string[]): string {
   return path.join(defaultRepoRoot, ...segments);

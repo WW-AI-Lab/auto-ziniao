@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { readJsonLinesFile } from "@ziniao/core";
-import { HealContextSchema, HealEventSchema } from "@ziniao/schemas";
+import { readJsonLinesFile } from "@ww-ai-lab/auto-ziniao-core";
+import { HealContextSchema, HealEventSchema } from "@ww-ai-lab/auto-ziniao-schemas";
 import {
   buildHealPrompt,
   buildTriggerInputFromFailure,
@@ -122,8 +122,8 @@ describe("classification and known issues", () => {
 
 describe("prompt rendering and dry-run files", () => {
   it("keeps unknown placeholders", () => {
-    expect(renderTemplate("hello {name} {missing_value}", { name: "ziniao" })).toBe(
-      "hello ziniao {missing_value}"
+    expect(renderTemplate("hello {name} {missing_value}", { name: "auto-ziniao" })).toBe(
+      "hello auto-ziniao {missing_value}"
     );
   });
 
@@ -342,6 +342,9 @@ describe("config, cooldown, and triggering", () => {
     );
     expect(failed.success).toBe(false);
     expect(failed.status).toBe("failed");
+    expect(failed.cli_exit_code).toBe(2);
+    expect(failed.cli_stderr).toBe("bad");
+    expect(failed.error).toBe("bad");
 
     const timeoutRepo = tempRepoRoot();
     const timedOut = await triggerHeal(
@@ -357,8 +360,47 @@ describe("config, cooldown, and triggering", () => {
         agentRunner: new MockRunner({ exitCode: -1, timedOut: true, stderr: "timeout" })
       }
     );
-    expect(timedOut.error).toBe("CLI timeout");
+    expect(timedOut.error).toBe("timeout");
     expect(timedOut.status).toBe("timeout");
+    expect(timedOut.timed_out).toBe(true);
+    expect(timedOut.cli_exit_code).toBe(-1);
+    expect(timedOut.cli_stderr).toBe("timeout");
+
+    const commandMissingRepo = tempRepoRoot();
+    const commandMissing = await triggerHeal(
+      { flow_id: "orders", error: "x", failed_step: { step_id: "extract" } },
+      {
+        repoRoot: commandMissingRepo,
+        dataRoot: path.join(commandMissingRepo, "data"),
+        clock: fixedClock,
+        config: testConfig({
+          agents: { mock: { command: ["missing-agent"], timeout_sec: 2 } },
+          agent: "mock"
+        }),
+        agentRunner: new MockRunner({ exitCode: 127, commandMissing: true, stderr: "missing-agent not found" })
+      }
+    );
+    expect(commandMissing.success).toBe(false);
+    expect(commandMissing.status).toBe("failed");
+    expect(commandMissing.command_missing).toBe(true);
+    expect(commandMissing.cli_exit_code).toBe(127);
+    expect(commandMissing.cli_stderr).toBe("missing-agent not found");
+
+    const longStderrRepo = tempRepoRoot();
+    const longStderr = await triggerHeal(
+      { flow_id: "orders", error: "x", failed_step: { step_id: "extract" } },
+      {
+        repoRoot: longStderrRepo,
+        dataRoot: path.join(longStderrRepo, "data"),
+        clock: fixedClock,
+        config: testConfig({
+          agents: { mock: { command: ["mock-agent"], timeout_sec: 2 } },
+          agent: "mock"
+        }),
+        agentRunner: new MockRunner({ exitCode: 2, stderr: "x".repeat(600) })
+      }
+    );
+    expect(longStderr.cli_stderr).toHaveLength(500);
 
     const missingAgentRepo = tempRepoRoot();
     const missingAgent = await triggerHeal(

@@ -10,7 +10,7 @@ import {
   collectExtractRefs,
   getDeclaredParams,
   validateFlowContract
-} from "@ziniao/schemas";
+} from "@ww-ai-lab/auto-ziniao-schemas";
 
 const repoRoot = process.cwd();
 const flowsDir = path.join(repoRoot, "flows");

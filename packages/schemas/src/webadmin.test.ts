@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   ApiErrorResponseSchema,
   ChatAgentInfoSchema,
+  ChatExtrasSchema,
+  ChatMessageSchema,
   ChatSseEventSchema,
   CreateFlowRequestSchema,
   CreateFlowResponseSchema,
@@ -76,7 +78,63 @@ describe("webadmin api schemas", () => {
     expect(ChatSseEventSchema.parse({ type: "delta", text: "hi" }).type).toBe("delta");
     expect(ChatSseEventSchema.parse({ type: "reasoning_delta", text: "thinking" }).type).toBe("reasoning_delta");
     expect(ChatSseEventSchema.parse({ type: "tool_call", name: "mock" }).type).toBe("tool_call");
+    const tool = ChatSseEventSchema.parse({
+      type: "tool_call",
+      name: "query_orders",
+      status: "success",
+      args_summary: "store=demo",
+      result_summary: "2 rows"
+    });
+    expect(tool.type).toBe("tool_call");
+    if (tool.type === "tool_call") {
+      expect(tool.status).toBe("success");
+      expect(tool.result_summary).toBe("2 rows");
+    }
+    const a2ui = ChatSseEventSchema.parse({
+      type: "a2ui",
+      block: {
+        type: "table",
+        title: "订单",
+        columns: ["id", "status"],
+        rows: [{ id: "o1", status: "paid" }]
+      }
+    });
+    expect(a2ui.type).toBe("a2ui");
     expect(ChatSseEventSchema.parse({ type: "heartbeat" }).type).toBe("heartbeat");
+  });
+
+  it("parses rich chat extras and older chat messages without extras", () => {
+    const extras = ChatExtrasSchema.parse({
+      reasoning: "先检查订单状态",
+      tools: [{
+        id: "tool_1",
+        name: "query_orders",
+        status: "success",
+        args_summary: "store=demo",
+        result_summary: "2 rows",
+        vendor_meta: true
+      }],
+      a2ui: [
+        { type: "alert", level: "info", text: "需要人工确认" },
+        { type: "unknown-card", payload: { safe: true } }
+      ],
+      future: true
+    });
+    expect(extras.tools?.[0]?.status).toBe("success");
+    expect(extras.tools?.[0]?.vendor_meta).toBe(true);
+    expect(extras.a2ui?.[1]?.type).toBe("unknown-card");
+    expect(extras.future).toBe(true);
+
+    const oldMessage = ChatMessageSchema.parse({
+      id: 1,
+      session_id: "s1",
+      role: "assistant",
+      content: "旧消息",
+      status: "done",
+      error: null,
+      created_at: "2026-06-15T00:00:00.000Z"
+    });
+    expect(oldMessage.extras).toBeUndefined();
   });
 
   it("parses WebAdmin monitoring DTOs", () => {

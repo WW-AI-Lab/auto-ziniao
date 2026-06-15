@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { homedir } from "node:os";
 
-import { readJsonFile, ZiniaoError } from "@ziniao/core";
-import type { KnownZclawTool } from "@ziniao/schemas";
+import { readJsonFile, ZiniaoError } from "@ww-ai-lab/auto-ziniao-core";
+import type { KnownZclawTool } from "@ww-ai-lab/auto-ziniao-schemas";
 
 export const DEFAULT_ZCLAW_BASE_URL = "http://127.0.0.1:9481";
 export const DEFAULT_ZCLAW_CONFIG_PATH = path.join(

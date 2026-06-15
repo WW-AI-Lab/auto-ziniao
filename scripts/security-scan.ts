@@ -94,14 +94,14 @@ for (const packageFile of [
       failures.push(`${packageFile}: 禁止依赖 ${forbidden}`);
     }
   }
-  if (normalizePath(packageFile) === "packages/self-heal/package.json" && deps.includes("@ziniao/zclaw")) {
-    failures.push(`${packageFile}: packages/self-heal 禁止依赖 @ziniao/zclaw`);
+  if (normalizePath(packageFile) === "packages/self-heal/package.json" && deps.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${packageFile}: packages/self-heal 禁止依赖 @ww-ai-lab/auto-ziniao-zclaw`);
   }
-  if (normalizePath(packageFile) === "packages/cli/package.json" && deps.includes("@ziniao/zclaw")) {
-    failures.push(`${packageFile}: packages/cli 禁止直接依赖 @ziniao/zclaw`);
+  if (normalizePath(packageFile) === "packages/cli/package.json" && deps.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${packageFile}: packages/cli 禁止直接依赖 @ww-ai-lab/auto-ziniao-zclaw`);
   }
-  if (normalizePath(packageFile) === "apps/api/package.json" && deps.includes("@ziniao/zclaw")) {
-    failures.push(`${packageFile}: apps/api 禁止直接依赖 @ziniao/zclaw`);
+  if (normalizePath(packageFile) === "apps/api/package.json" && deps.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${packageFile}: apps/api 禁止直接依赖 @ww-ai-lab/auto-ziniao-zclaw`);
   }
 }
 
@@ -114,14 +114,14 @@ for (const filePath of [
     continue;
   }
   const text = readFileSync(filePath, "utf8");
-  if (isSelfHealPackage(filePath) && text.includes("@ziniao/zclaw")) {
-    failures.push(`${filePath}: packages/self-heal 禁止 import @ziniao/zclaw`);
+  if (isSelfHealPackage(filePath) && text.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${filePath}: packages/self-heal 禁止 import @ww-ai-lab/auto-ziniao-zclaw`);
   }
-  if (isCliPackage(filePath) && text.includes("@ziniao/zclaw")) {
-    failures.push(`${filePath}: packages/cli 禁止 import @ziniao/zclaw`);
+  if (isCliPackage(filePath) && text.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${filePath}: packages/cli 禁止 import @ww-ai-lab/auto-ziniao-zclaw`);
   }
-  if (isWebAdminApiApp(filePath) && text.includes("@ziniao/zclaw")) {
-    failures.push(`${filePath}: apps/api 禁止 import @ziniao/zclaw`);
+  if (isWebAdminApiApp(filePath) && text.includes("@ww-ai-lab/auto-ziniao-zclaw")) {
+    failures.push(`${filePath}: apps/api 禁止 import @ww-ai-lab/auto-ziniao-zclaw`);
   }
   for (const rule of sourceRules) {
     if (rule.pattern.test(text)) {

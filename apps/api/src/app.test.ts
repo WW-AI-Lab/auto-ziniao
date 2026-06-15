@@ -156,6 +156,40 @@ describe("api app", () => {
     await app.close();
   });
 
+  it("exposes self-heal agent delivery failures without replacing the flow error", async () => {
+    const repo = createRepo();
+    const stderr = "Delivering to Feishu requires target";
+    const app = await createTestApp(repo, {
+      agentRunner: {
+        async run() {
+          return { exitCode: 1, stderr };
+        }
+      }
+    });
+    const run = await app.inject({
+      method: "POST",
+      url: "/api/flows/failing/run",
+      payload: { params: { store_name: "demo" } }
+    });
+    expect(run.statusCode).toBe(200);
+    const token = run.json().token;
+    await waitFor(() => app.inject({ method: "GET", url: `/api/flow-runs/${token}` }).then((r) => r.json().status !== "running"));
+    const status = (await app.inject({ method: "GET", url: `/api/flow-runs/${token}` })).json();
+    expect(status.status).toBe("failed");
+    expect(status.error).toBe("selector changed");
+    expect(status.heal_summary.status).toBe("failed");
+    expect(status.heal_summary.cli_exit_code).toBe(1);
+    expect(status.heal_summary.cli_stderr).toBe(stderr);
+    expect(status.heal_summary.error).toBe(stderr);
+
+    const detail = (await app.inject({ method: "GET", url: `/api/runs/${status.run_id}` })).json();
+    expect(detail.error).toBe("selector changed");
+    expect(detail.heal_summary.cli_exit_code).toBe(1);
+    expect(detail.heal_summary.cli_stderr).toBe(stderr);
+    expect(detail.heal_events[0].cli_stderr).toBe(stderr);
+    await app.close();
+  });
+
   it("filters and paginates unified run history", async () => {
     const repo = createRepo();
     const app = await createTestApp(repo);
@@ -200,10 +234,23 @@ describe("api app", () => {
       error: "missing context",
       heal_summary: { status: "failed", heal_id: "heal_missing", error: "context gone" }
     });
+    writeFileSync(
+      path.join(repo.root, "learnings", "heals.jsonl"),
+      `${JSON.stringify({
+        event: "triggered",
+        status: "failed",
+        heal_id: "heal_missing",
+        flow_id: "local",
+        cli_exit_code: 1,
+        cli_stderr: "delivery failed"
+      })}\n`
+    );
     const app = await createTestApp(repo, { storage });
     const detail = await app.inject({ method: "GET", url: "/api/runs/run_missing_heal" });
     expect(detail.statusCode).toBe(200);
     expect(detail.json().heal_summary.context_available).toBe(false);
+    expect(detail.json().heal_summary.cli_exit_code).toBe(1);
+    expect(detail.json().heal_summary.cli_stderr).toBe("delivery failed");
     await app.close();
   });
 
@@ -263,12 +310,27 @@ describe("api app", () => {
     await app.close();
   });
 
-  it("handles chat SSE with mock agent runner and rejects concurrent sends", async () => {
+  it("handles chat SSE with mock Gateway chat client and rejects concurrent sends", async () => {
     const repo = createRepo();
     const app = await createTestApp(repo, {
-      agentRunner: {
-        async run() {
-          return { exitCode: 0, stdout: "收到" };
+      chatClient: {
+        async sendChat() {
+          return {
+            text: "收到",
+            reasoning: "先理解用户问题",
+            tools: [{
+              name: "query_orders",
+              status: "success",
+              args_summary: "store=demo",
+              result_summary: "2 rows"
+            }],
+            a2ui: [{
+              type: "table",
+              title: "订单",
+              columns: ["id", "status"],
+              rows: [{ id: "o1", status: "paid" }]
+            }]
+          };
         }
       }
     });
@@ -277,27 +339,110 @@ describe("api app", () => {
     const response = await app.inject({ method: "POST", url: `/api/chat/sessions/${sid}/messages`, payload: { content: "你好" } });
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain("\"type\":\"accepted\"");
+    expect(response.body).toContain("\"type\":\"reasoning_delta\"");
+    expect(response.body).toContain("\"type\":\"tool_call\"");
+    expect(response.body).toContain("\"type\":\"a2ui\"");
     expect(response.body).toContain("收到");
     const messages = await app.inject({ method: "GET", url: `/api/chat/sessions/${sid}/messages` });
-    expect(messages.json().items).toHaveLength(2);
+    const items = messages.json().items;
+    expect(items).toHaveLength(2);
+    expect(items[0].extras).toBeNull();
+    expect(items[1].extras.reasoning).toBe("先理解用户问题");
+    expect(items[1].extras.tools[0]).toMatchObject({ name: "query_orders", status: "success" });
+    expect(items[1].extras.a2ui[0]).toMatchObject({ type: "table", title: "订单" });
     await app.close();
   });
 
-  it("persists chat runner failures without real agent CLI", async () => {
+  it("uses WebAdmin OpenClaw Gateway config for chat without Agent CLI delivery", async () => {
     const repo = createRepo();
+    writeFileSync(path.join(repo.root, "config.json"), JSON.stringify({
+      webadmin: {
+        chat: {
+          agent: "openclaw",
+          agents: {
+            openclaw: {
+              type: "openclaw-gateway",
+              gateway_url: "ws://127.0.0.1:18789",
+              agent_id: "main",
+              timeout_sec: 320,
+              session_key_prefix: "auto-ziniao-webadmin:"
+            }
+          }
+        }
+      },
+      heal: {
+        agent: "openclaw",
+        agents: {
+          openclaw: {
+            command: ["openclaw", "agent", "--deliver", "--channel", "feishu"],
+            timeout_sec: 320
+          }
+        }
+      }
+    }));
+    let chatInput: unknown = null;
+    let agentRunnerCalled = false;
     const app = await createTestApp(repo, {
+      chatClient: {
+        async sendChat(input) {
+          chatInput = input;
+          return { text: "收到", runId: "run_1" };
+        }
+      },
       agentRunner: {
         async run() {
-          return { exitCode: 2, stderr: "bad agent" };
+          agentRunnerCalled = true;
+          return { exitCode: 1, stderr: "should not run" };
+        }
+      }
+    });
+    const sid = (await app.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "t" } })).json().id;
+    await app.inject({ method: "POST", url: `/api/chat/sessions/${sid}/messages`, payload: { content: "你好" } });
+    expect(agentRunnerCalled).toBe(false);
+    expect(chatInput).toMatchObject({
+      agentName: "openclaw",
+      sessionId: sid,
+      content: "你好",
+      agent: {
+        gatewayUrl: "ws://127.0.0.1:18789",
+        agentId: "main",
+        timeoutSec: 320,
+        sessionKeyPrefix: "auto-ziniao-webadmin:"
+      }
+    });
+    await app.close();
+  });
+
+  it("persists Gateway chat failures without Agent CLI fallback", async () => {
+    const repo = createRepo();
+    let agentRunnerCalled = false;
+    const app = await createTestApp(repo, {
+      chatClient: {
+        async sendChat() {
+          throw Object.assign(new Error("OpenClaw Gateway RPC failed"), {
+            reasoning: "已连接 Gateway，等待工具返回时失败",
+            tools: [{ name: "gateway_agent", status: "failed", error: "RPC failed" }]
+          });
+        }
+      },
+      agentRunner: {
+        async run() {
+          agentRunnerCalled = true;
+          return { exitCode: 0, stdout: "fallback" };
         }
       }
     });
     const sid = (await app.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "t" } })).json().id;
     const response = await app.inject({ method: "POST", url: `/api/chat/sessions/${sid}/messages`, payload: { content: "你好" } });
     expect(response.body).toContain("\"type\":\"error\"");
-    expect(response.body).toContain("bad agent");
+    expect(response.body).toContain("\"type\":\"reasoning_delta\"");
+    expect(response.body).toContain("\"type\":\"tool_call\"");
+    expect(response.body).toContain("OpenClaw Gateway RPC failed");
+    expect(agentRunnerCalled).toBe(false);
     const messages = (await app.inject({ method: "GET", url: `/api/chat/sessions/${sid}/messages` })).json().items;
     expect(messages[1].status).toBe("failed");
+    expect(messages[1].extras.reasoning).toContain("等待工具返回");
+    expect(messages[1].extras.tools[0]).toMatchObject({ name: "gateway_agent", status: "failed" });
     await app.close();
   });
 
@@ -375,6 +520,11 @@ async function createTestApp(
     agentRunner: {
       async run() {
         return { exitCode: 0, stdout: "OK" };
+      }
+    },
+    chatClient: {
+      async sendChat() {
+        return { text: "OK" };
       }
     },
     ...rest

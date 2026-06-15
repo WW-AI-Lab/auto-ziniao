@@ -1,7 +1,13 @@
 {
-  "name": "@ziniao/core",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@ww-ai-lab/auto-ziniao-core",
+  "version": "0.1.1",
+  "description": "Shared filesystem and error helpers for Auto Ziniao.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,6 +16,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "!dist/**/*.test.*",
+    "package.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsc -b",

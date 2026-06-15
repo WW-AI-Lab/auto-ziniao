@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, it } from "vitest";
 
-import { FlowToolClient } from "@ziniao/flow-engine";
-import { AgentRunner, AgentRunResult, HealConfig } from "@ziniao/self-heal";
+import { FlowToolClient } from "@ww-ai-lab/auto-ziniao-flow-engine";
+import { AgentRunner, AgentRunResult, HealConfig } from "@ww-ai-lab/auto-ziniao-self-heal";
 
 import { runCli } from "./index.js";
 
@@ -18,12 +18,12 @@ type CliResult = {
 
 const fixedClock = { now: () => new Date("2026-06-14T08:00:00.000Z") };
 
-describe("ziniao CLI", () => {
+describe("auto-ziniao CLI", () => {
   it("shows help", async () => {
     const repo = createRepo();
     const result = await run(repo, ["--help"]);
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("ziniao");
+    expect(result.stdout).toContain("auto-ziniao");
     expect(result.stdout).toContain("run");
   });
 
@@ -298,7 +298,7 @@ describe("ziniao CLI", () => {
     expect((await run(repo, ["heals"])).stdout).toContain("skipped");
     expect((await run(repo, ["stats"])).stdout).toContain("成功");
     const cron = await run(repo, ["cron"]);
-    expect(cron.stdout).toContain("pnpm ziniao run scheduled");
+    expect(cron.stdout).toContain("pnpm auto-ziniao run scheduled");
     expect(cron.stdout).toContain("建议的 crontab 配置");
   });
 });

@@ -107,7 +107,7 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **THEN** 当前 Python CLI 的主要命令均有 TypeScript CLI 测试覆盖，且测试断言命令 exit code、关键输出摘要和数据文件读写语义
 
 #### Scenario: CLI run baseline is mock-only
-- **WHEN** CLI 测试覆盖 `ziniao run` 或 `ziniao run-all`
+- **WHEN** CLI 测试覆盖 `auto-ziniao run` 或 `auto-ziniao run-all`
 - **THEN** 测试只通过 mock tool client 执行，不调用真实 `open_store`、`visit_page`、`execute_script` 或 `POST /zclaw/tools/invoke`
 
 #### Scenario: CLI self-heal baseline is mock-only
@@ -116,10 +116,10 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 
 #### Scenario: CLI is production baseline (M7 supersedes M5 transition)
 - **WHEN** M7 Python 清零完成后执行 baseline
-- **THEN** `pnpm ziniao list` 与 `pnpm ziniao validate orders_overview` 作为生产入口验证；Python 入口已移除，历史恢复通过 git（commit `68d7db8a`）
+- **THEN** `pnpm auto-ziniao list` 与 `pnpm auto-ziniao validate orders_overview` 作为生产入口验证；Python 入口已移除，历史恢复通过 git（commit `68d7db8a`）
 
 ### Requirement: TS WebAdmin API offline baseline
-系统 SHALL 将 TS WebAdmin API 的离线测试纳入兼容性基线。该基线 MUST 覆盖 Fastify route/service、WebAdmin DTO schema、SQLite DAO、schedule trigger 计算、scheduler tick、manual run 状态、chat SSE 事件、静态前端托管 fallback 和安全路径校验。默认测试 MUST 使用临时 repo/data root、mock tool client、mock Agent runner、fixed clock 和 no-op sleeper，MUST NOT 连接真实 ZClaw bridge、MUST NOT 执行真实 flow、MUST NOT 调用真实 Agent CLI。
+系统 SHALL 将 TS WebAdmin API 的离线测试纳入兼容性基线。该基线 MUST 覆盖 Fastify route/service、WebAdmin DTO schema、SQLite DAO、schedule trigger 计算、scheduler tick、manual run 状态、chat SSE 事件、OpenClaw Gateway RPC chat adapter mock 路径、静态前端托管 fallback 和安全路径校验。默认测试 MUST 使用临时 repo/data root、mock tool client、mock Agent runner、mock Gateway chat client、fixed clock 和 no-op sleeper，MUST NOT 连接真实 ZClaw bridge、MUST NOT 执行真实 flow、MUST NOT 调用真实 Agent CLI、MUST NOT 连接真实 OpenClaw Gateway。
 
 #### Scenario: WebAdmin API route baseline
 - **WHEN** 执行 TS WebAdmin API route 测试
@@ -131,21 +131,21 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 
 #### Scenario: WebAdmin API chat baseline is mock-only
 - **WHEN** chat SSE 测试运行
-- **THEN** 测试使用 mock Agent runner 生成事件流，不调用真实 OpenClaw/Claude/Cursor 命令
+- **THEN** 测试使用 mock Gateway chat client 生成事件流，不调用真实 OpenClaw Gateway、OpenClaw Agent CLI、Claude、Cursor、Feishu 或其他外部 delivery 命令
 
 #### Scenario: WebAdmin API safety scan baseline
-- **WHEN** 执行 `pnpm security:scan`
-- **THEN** 扫描确认 `apps/webadmin-api` 不包含本机浏览器自动化依赖、未授权 direct bridge 访问、ZClaw API key 读取或真实 bridge fallback
+- **WHEN** 执行安全扫描
+- **THEN** 扫描会阻断本机浏览器自动化依赖和绕过 ZClaw bridge 的可疑路径，同时允许受控的 OpenClaw Gateway loopback RPC client 用于 WebAdmin chat
 
 ### Requirement: WebAdmin and CLI cutover readiness evidence
-系统 SHALL 为 `remove-python-runtime` 的 M7 preflight 提供切换准备证据。证据 MUST 至少包含：`apps/webadmin-frontend` build/typecheck 结果、`apps/webadmin-api` 核心 route/static serving smoke 或 test 结果、`ziniao validate orders_overview` 结果、`ziniao run webadmin_selftest ... --no-heal` local-only 结果，以及 Python WebAdmin/CLI 未在本阶段删除的说明。真实 bridge flow 双跑若未执行，MUST 记录未执行原因和安全边界。
+系统 SHALL 为 `remove-python-runtime` 的 M7 preflight 提供切换准备证据。证据 MUST 至少包含：`apps/webadmin-frontend` build/typecheck 结果、`apps/webadmin-api` 核心 route/static serving smoke 或 test 结果、`auto-ziniao validate orders_overview` 结果、`auto-ziniao run webadmin_selftest ... --no-heal` local-only 结果，以及 Python WebAdmin/CLI 未在本阶段删除的说明。真实 bridge flow 双跑若未执行，MUST 记录未执行原因和安全边界。
 
 #### Scenario: cutover evidence is recorded
 - **WHEN** 本 change 实现完成
 - **THEN** `docs/06-TS迁移进度与路线图.md` 或本 change `tasks.md` 记录可供 `remove-python-runtime` preflight 引用的命令、状态和摘要
 
 #### Scenario: local-only CLI smoke is recorded
-- **WHEN** 执行 `ziniao validate orders_overview` 和 `ziniao run webadmin_selftest ... --no-heal`
+- **WHEN** 执行 `auto-ziniao validate orders_overview` 和 `auto-ziniao run webadmin_selftest ... --no-heal`
 - **THEN** 结果被记录为 TS CLI 切换准备证据，且不要求真实 ZClaw bridge
 
 #### Scenario: real bridge double-run is explicit

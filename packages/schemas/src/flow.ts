@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { defaultRepoRoot } from "@ziniao/core";
+import { defaultRepoRoot } from "@ww-ai-lab/auto-ziniao-core";
 import {
   CONDITION_TYPE_SET,
   KNOWN_FLOW_ACTION_SET,
@@ -67,12 +67,77 @@ export const BranchSchema = z
   })
   .passthrough();
 
+export const StepRiskSchema = z.enum(["read", "navigate", "write", "critical"]);
+
+export const StepPacingSchema = z
+  .object({
+    beforeMs: z.number().int().nonnegative().optional(),
+    afterMs: z.number().int().nonnegative().optional(),
+    timeoutMs: z.number().int().nonnegative().optional(),
+    requiresConfirm: z.boolean().optional(),
+    reason: z.string().optional(),
+    postconditionExempt: z.boolean().optional()
+  })
+  .passthrough();
+
+export const ConfirmGateSchema = z
+  .object({
+    allowParam: z.string().min(1).optional(),
+    message: z.string().optional(),
+    exempt: z.boolean().optional(),
+    reason: z.string().optional()
+  })
+  .passthrough();
+
+export const PacingPolicySchema = z
+  .object({
+    profile: z.string().optional(),
+    jitter: z
+      .object({
+        enabled: z.boolean().default(false),
+        ratio: z.number().min(0).max(1).default(0)
+      })
+      .passthrough()
+      .optional(),
+    limits: z
+      .object({
+        perStoreConcurrency: z.number().int().positive().optional(),
+        perFlowConcurrency: z.number().int().positive().optional(),
+        maxConsecutiveFailures: z.number().int().positive().optional(),
+        maxRunPerDay: z.number().int().positive().optional()
+      })
+      .passthrough()
+      .optional(),
+    defaults: z
+      .object({
+        read: StepPacingSchema.optional(),
+        navigate: StepPacingSchema.optional(),
+        write: StepPacingSchema.optional(),
+        critical: StepPacingSchema.optional()
+      })
+      .passthrough()
+      .optional(),
+    budgets: z
+      .object({
+        perStoreConcurrency: z.number().int().positive().optional(),
+        perFlowConcurrency: z.number().int().positive().optional(),
+        maxConsecutiveFailures: z.number().int().positive().optional(),
+        maxRunPerDay: z.number().int().positive().optional()
+      })
+      .passthrough()
+      .optional()
+  })
+  .passthrough();
+
 export const FlowStepSchema = z
   .object({
     id: z.string().optional(),
     tool: z.string().optional(),
     action: z.string().optional(),
     args: z.record(JsonValueSchema).default({}),
+    risk: StepRiskSchema.optional(),
+    pacing: StepPacingSchema.optional(),
+    confirm: ConfirmGateSchema.optional(),
     save: z.string().optional(),
     condition: ConditionSchema.optional(),
     validate: ValidateRuleSchema.optional(),
@@ -93,6 +158,7 @@ export const FlowDefinitionSchema = z
     schedule: z.string().optional().default(""),
     description: z.string().default(""),
     retry: RetrySchema.optional(),
+    pacing: PacingPolicySchema.optional(),
     params: FlowParamsSchema,
     steps: z.array(FlowStepSchema).nonempty(),
     on_success: z
@@ -120,6 +186,10 @@ export const FlowDefinitionSchema = z
 
 export type FlowDefinition = z.infer<typeof FlowDefinitionSchema>;
 export type FlowStep = z.infer<typeof FlowStepSchema>;
+export type StepRisk = z.infer<typeof StepRiskSchema>;
+export type StepPacing = z.infer<typeof StepPacingSchema>;
+export type ConfirmGate = z.infer<typeof ConfirmGateSchema>;
+export type PacingPolicy = z.infer<typeof PacingPolicySchema>;
 
 export type ValidationIssueLevel = "error" | "warn";
 
@@ -189,6 +259,47 @@ function collectTargets(step: FlowStep): (string | undefined)[] {
 }
 
 type BranchCase = z.infer<typeof BranchCaseSchema>;
+
+const OPERATION_TOOL_SET = new Set([
+  "click_element",
+  "input_text",
+  "scroll_page",
+  "run_automation"
+]);
+
+function hasPostcondition(flow: FlowDefinition, step: FlowStep, index: number): boolean {
+  if (step.validate || step.pacing?.postconditionExempt) {
+    return true;
+  }
+  const next = flow.steps[index + 1];
+  if (!next) {
+    return false;
+  }
+  return next.action === "assert" || next.tool === "wait_for_element" || next.tool === "wait_for_navigation";
+}
+
+function validatePacingContract(flow: FlowDefinition): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  flow.steps.forEach((step, index) => {
+    const stepId = step.id ?? `step_${index}`;
+    if (step.tool && OPERATION_TOOL_SET.has(step.tool) && !step.risk) {
+      issues.push(
+        issue("warn", `步骤 ${stepId} 是操作类工具但未声明 risk`, stepId, "missing_step_risk")
+      );
+    }
+    if (step.risk === "critical" && !step.confirm) {
+      issues.push(
+        issue("error", `步骤 ${stepId} 为 critical 风险但缺少 confirm`, stepId, "critical_requires_confirm")
+      );
+    }
+    if ((step.risk === "write" || step.risk === "critical") && !hasPostcondition(flow, step, index)) {
+      issues.push(
+        issue("warn", `步骤 ${stepId} 为 ${step.risk} 风险但缺少后置验证`, stepId, "missing_write_postcondition")
+      );
+    }
+  });
+  return issues;
+}
 
 function findParamRefs(value: unknown): string[] {
   const raw = JSON.stringify(value);
@@ -318,6 +429,8 @@ export function validateFlowContract(
 
     issues.push(...validateConditionTypes(step, stepId));
   }
+
+  issues.push(...validatePacingContract(flow));
 
   const extractRefs = collectExtractRefs(flow);
   if (options.checkExtractExists ?? true) {

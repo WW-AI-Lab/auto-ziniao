@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { FlowDefinitionSchema } from "../src/flow.js";
+import { FlowRuntimeEventSchema } from "../src/runtime-data.js";
 import {
   ApiErrorResponseSchema,
   ChatAgentInfoSchema,
@@ -42,6 +43,17 @@ const schemas = [
     rendered: `${JSON.stringify(
       zodToJsonSchema(FlowDefinitionSchema, {
         name: "FlowDefinition",
+        $refStrategy: "none"
+      }),
+      null,
+      2
+    )}\n`
+  },
+  {
+    file: "flow-runtime-event.schema.json",
+    rendered: `${JSON.stringify(
+      zodToJsonSchema(FlowRuntimeEventSchema, {
+        name: "FlowRuntimeEvent",
         $refStrategy: "none"
       }),
       null,

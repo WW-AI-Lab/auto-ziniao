@@ -3,23 +3,28 @@ import { appendFile } from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { defaultRepoRoot, readJsonFile, ZiniaoError } from "@ziniao/core";
+import { defaultRepoRoot, readJsonFile, ZiniaoError } from "@ww-ai-lab/auto-ziniao-core";
 import {
   FlowDefinition,
+  FlowRuntimeEvent,
+  FlowRuntimeEventSchema,
   FlowStep,
   FlowValidationResult,
   KNOWN_ZCLAW_TOOL_SET,
   KnownZclawTool,
+  PacingPolicy,
   RunLogEntrySchema,
+  StepPacing,
+  StepRisk,
   ValidationIssue,
   validateFlowContract
-} from "@ziniao/schemas";
+} from "@ww-ai-lab/auto-ziniao-schemas";
 import {
   createZClawClient,
   InvokeArgs,
   ZClawClient,
   ZClawClientOptions
-} from "@ziniao/zclaw";
+} from "@ww-ai-lab/auto-ziniao-zclaw";
 
 export class FlowEngineError extends ZiniaoError {
   constructor(message: string, code = "flow_engine_error", details?: unknown) {
@@ -81,6 +86,8 @@ export type FlowRunnerOptions = {
   zclawOptions?: ZClawClientOptions;
   sleeper?: (ms: number) => Promise<void>;
   clock?: Clock;
+  random?: () => number;
+  executionRegistry?: FlowExecutionRegistry;
   logger?: Pick<Console, "log" | "error">;
   verbose?: boolean;
   heal?: boolean;
@@ -120,10 +127,104 @@ type StepControl =
   | { kind: "jump"; target: string; result?: unknown }
   | { kind: "end"; result?: unknown };
 
+type PacingLimits = {
+  perStoreConcurrency?: number;
+  perFlowConcurrency?: number;
+  maxConsecutiveFailures?: number;
+  maxRunPerDay?: number;
+};
+
+type EffectivePacing = StepPacing & {
+  profile: string;
+  risk: StepRisk;
+  jitter: { enabled: boolean; ratio: number };
+};
+
+type RegistryAcquireResult =
+  | { ok: true; storeKey: string; release: () => void }
+  | { ok: false; storeKey: string; reason: string };
+
 const defaultSleeper = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+
+const defaultRiskPacing: Record<StepRisk, Required<Pick<StepPacing, "beforeMs" | "afterMs">>> = {
+  read: { beforeMs: 0, afterMs: 0 },
+  navigate: { beforeMs: 0, afterMs: 0 },
+  write: { beforeMs: 0, afterMs: 0 },
+  critical: { beforeMs: 0, afterMs: 0 }
+};
+
+let runSequence = 0;
+
+export class FlowPolicyRejectionError extends FlowEngineError {
+  constructor(message: string, code: string, details?: unknown) {
+    super(message, code, details);
+    this.name = "FlowPolicyRejectionError";
+  }
+}
+
+export class FlowExecutionRegistry {
+  private readonly activeByFlow = new Map<string, number>();
+  private readonly activeByStore = new Map<string, number>();
+  private readonly consecutiveFailures = new Map<string, number>();
+  private readonly runCountsByDay = new Map<string, number>();
+
+  acquire(input: {
+    flowId: string;
+    storeKey: string;
+    dateKey: string;
+    limits: PacingLimits;
+  }): RegistryAcquireResult {
+    const flowActive = this.activeByFlow.get(input.flowId) ?? 0;
+    if (input.limits.perFlowConcurrency && flowActive >= input.limits.perFlowConcurrency) {
+      return { ok: false, storeKey: input.storeKey, reason: "per_flow_concurrency" };
+    }
+
+    const storeActive = this.activeByStore.get(input.storeKey) ?? 0;
+    if (input.limits.perStoreConcurrency && storeActive >= input.limits.perStoreConcurrency) {
+      return { ok: false, storeKey: input.storeKey, reason: "per_store_concurrency" };
+    }
+
+    const failures = this.consecutiveFailures.get(input.flowId) ?? 0;
+    if (input.limits.maxConsecutiveFailures && failures >= input.limits.maxConsecutiveFailures) {
+      return { ok: false, storeKey: input.storeKey, reason: "max_consecutive_failures" };
+    }
+
+    const runCountKey = `${input.dateKey}:${input.flowId}`;
+    const runCount = this.runCountsByDay.get(runCountKey) ?? 0;
+    if (input.limits.maxRunPerDay && runCount >= input.limits.maxRunPerDay) {
+      return { ok: false, storeKey: input.storeKey, reason: "max_run_per_day" };
+    }
+
+    this.activeByFlow.set(input.flowId, flowActive + 1);
+    this.activeByStore.set(input.storeKey, storeActive + 1);
+    this.runCountsByDay.set(runCountKey, runCount + 1);
+
+    let released = false;
+    return {
+      ok: true,
+      storeKey: input.storeKey,
+      release: () => {
+        if (released) {
+          return;
+        }
+        released = true;
+        decrementMap(this.activeByFlow, input.flowId);
+        decrementMap(this.activeByStore, input.storeKey);
+      }
+    };
+  }
+
+  recordRunResult(flowId: string, success: boolean): void {
+    if (success) {
+      this.consecutiveFailures.delete(flowId);
+      return;
+    }
+    this.consecutiveFailures.set(flowId, (this.consecutiveFailures.get(flowId) ?? 0) + 1);
+  }
+}
 
 export function createZClawFlowToolClient(
   clientOrOptions: ZClawClient | ZClawClientOptions = {}
@@ -241,6 +342,8 @@ export class FlowRunner {
   private readonly toolClient: FlowToolClient;
   private readonly sleeper: (ms: number) => Promise<void>;
   private readonly clock: Clock;
+  private readonly random: () => number;
+  private readonly executionRegistry: FlowExecutionRegistry;
   private readonly logger: Pick<Console, "log" | "error">;
   private readonly verbose: boolean;
   private readonly healEnabled: boolean;
@@ -250,6 +353,9 @@ export class FlowRunner {
   private storeId?: string;
   private targetId?: string;
   private failedStep?: FailedStep;
+  private currentFlow?: FlowDefinition;
+  private currentRunId = "";
+  private currentParams: Record<string, unknown> = {};
 
   constructor(options: FlowRunnerOptions = {}) {
     this.repoRoot = options.repoRoot ?? defaultRepoRoot;
@@ -258,6 +364,8 @@ export class FlowRunner {
       options.toolClient ?? createZClawFlowToolClient(options.zclawOptions ?? {});
     this.sleeper = options.sleeper ?? defaultSleeper;
     this.clock = options.clock ?? { now: () => new Date() };
+    this.random = options.random ?? Math.random;
+    this.executionRegistry = options.executionRegistry ?? new FlowExecutionRegistry();
     this.logger = options.logger ?? console;
     this.verbose = options.verbose ?? false;
     this.healEnabled = options.heal ?? true;
@@ -282,41 +390,96 @@ export class FlowRunner {
     const maxAttempts = flow.retry?.maxAttempts ?? 1;
     const retryDelay = flow.retry?.delayMs ?? 3000;
     const started = performance.now();
+    const runId = createRunId(flow.id);
+    this.currentFlow = flow;
+    this.currentRunId = runId;
+    this.currentParams = mergedParams;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      this.context = { params: mergedParams };
-      this.failedStep = undefined;
-      try {
-        if (attempt > 1) {
-          await this.sleeper(retryDelay);
-        }
-        const data = await this.executeSteps(flow.steps);
-        const durationMs = performance.now() - started;
-        await this.writeRunLog(flow.id, "success", durationMs, undefined, mergedParams, data);
-        if (flow.on_success?.close_store ?? false) {
-          await this.cleanupStore();
-        }
-        return { status: "success", data };
-      } catch (error) {
-        if (attempt < maxAttempts) {
-          continue;
-        }
-        const durationMs = performance.now() - started;
-        const message = errorMessage(error);
-        await this.writeRunLog(flow.id, "failed", durationMs, message, mergedParams);
-        if (flow.on_fail_final?.close_store ?? true) {
-          await this.cleanupStore();
-        }
-        return {
-          status: "failed",
-          error: message,
-          failed_step: this.failedStep,
-          heal: this.createHealMetadata(flow, message)
-        };
+    const limits = resolvePacingLimits(flow.pacing);
+    const storeKey = resolveStoreKey(mergedParams, this.toolClient);
+    const acquired = this.executionRegistry.acquire({
+      flowId: flow.id,
+      storeKey,
+      dateKey: formatDate(this.clock.now()),
+      limits
+    });
+    if (!acquired.ok) {
+      if (acquired.reason === "per_store_concurrency") {
+        await this.writeRuntimeEvent(flow.id, {
+          event: "store_lock_wait",
+          reason: acquired.reason,
+          store_name: storeKey
+        });
       }
+      const message = `执行预算拒绝: ${acquired.reason}`;
+      await this.writeRuntimeEvent(flow.id, {
+        event: "budget_rejected",
+        reason: acquired.reason,
+        store_name: storeKey
+      });
+      await this.writeRunLog(flow.id, "failed", 0, message, mergedParams);
+      return {
+        status: "failed",
+        error: message,
+        heal: { triggered: false, reason: "budget_rejected" }
+      };
     }
 
-    return { status: "exhausted", error: "所有重试均失败" };
+    await this.writeRuntimeEvent(flow.id, {
+      event: "store_lock_acquired",
+      reason: "run_started",
+      store_name: acquired.storeKey
+    });
+
+    try {
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        this.context = { params: mergedParams };
+        this.failedStep = undefined;
+        try {
+          if (attempt > 1) {
+            await this.sleeper(retryDelay);
+          }
+          const data = await this.executeSteps(flow.steps);
+          const durationMs = performance.now() - started;
+          await this.writeRunLog(flow.id, "success", durationMs, undefined, mergedParams, data);
+          this.executionRegistry.recordRunResult(flow.id, true);
+          if (flow.on_success?.close_store ?? false) {
+            await this.cleanupStore();
+          }
+          return { status: "success", data };
+        } catch (error) {
+          if (attempt < maxAttempts && !(error instanceof FlowPolicyRejectionError)) {
+            continue;
+          }
+          const durationMs = performance.now() - started;
+          const message = errorMessage(error);
+          await this.writeRunLog(flow.id, "failed", durationMs, message, mergedParams);
+          this.executionRegistry.recordRunResult(flow.id, false);
+          if (flow.on_fail_final?.close_store ?? true) {
+            await this.cleanupStore();
+          }
+          return {
+            status: "failed",
+            error: message,
+            failed_step: this.failedStep,
+            heal: this.createHealMetadata(flow, message)
+          };
+        }
+      }
+
+      this.executionRegistry.recordRunResult(flow.id, false);
+      return { status: "exhausted", error: "所有重试均失败" };
+    } finally {
+      acquired.release();
+      await this.writeRuntimeEvent(flow.id, {
+        event: "store_lock_released",
+        reason: "run_finished",
+        store_name: acquired.storeKey
+      });
+      this.currentFlow = undefined;
+      this.currentRunId = "";
+      this.currentParams = {};
+    }
   }
 
   resolveVariables(value: unknown): unknown {
@@ -415,6 +578,10 @@ export class FlowRunner {
       this.validateResult(step, result);
       return { kind: "next", result };
     } catch (error) {
+      if (error instanceof FlowPolicyRejectionError) {
+        this.recordFailure(step, error);
+        throw error;
+      }
       const onFail = step.on_fail ?? { action: "abort" };
       const action = onFail.action ?? "abort";
       if (action === "skip") {
@@ -460,6 +627,10 @@ export class FlowRunner {
         this.validateResult(step, result);
         return result;
       } catch (error) {
+        if (error instanceof FlowPolicyRejectionError) {
+          this.recordFailure(step, error);
+          throw error;
+        }
         lastError = error;
         if (attempt < maxAttempts) {
           await this.sleeper(delayMs);
@@ -471,13 +642,69 @@ export class FlowRunner {
   }
 
   private async executeStep(step: FlowStep): Promise<unknown> {
-    if (step.tool) {
-      return this.executeTool(step);
+    return this.executeStepWithPacing(step);
+  }
+
+  private async executeStepWithPacing(step: FlowStep): Promise<unknown> {
+    const flow = this.currentFlow;
+    const pacing = resolveEffectivePacing(flow?.pacing, step);
+    await this.checkConfirmGate(step, pacing);
+    await this.applyPacingWait(step, pacing, "before");
+    try {
+      if (step.tool) {
+        return await this.executeTool(step);
+      }
+      if (step.action) {
+        return await this.executeAction(step);
+      }
+      throw new FlowEngineError(`步骤缺少 tool 或 action: ${step.id ?? "unknown"}`);
+    } finally {
+      await this.applyPacingWait(step, pacing, "after");
     }
-    if (step.action) {
-      return this.executeAction(step);
+  }
+
+  private async checkConfirmGate(step: FlowStep, pacing: EffectivePacing): Promise<void> {
+    const requiresConfirm = pacing.risk === "critical" || pacing.requiresConfirm === true;
+    if (!requiresConfirm || step.confirm?.exempt) {
+      return;
     }
-    throw new FlowEngineError(`步骤缺少 tool 或 action: ${step.id ?? "unknown"}`);
+    const allowParam = step.confirm?.allowParam ?? "allow_critical";
+    if (isTruthy(this.currentParams[allowParam])) {
+      return;
+    }
+    await this.writeRuntimeEvent(this.currentFlow?.id ?? "unknown", {
+      event: "confirm_rejected",
+      step_id: step.id,
+      risk: pacing.risk,
+      reason: allowParam,
+      profile: pacing.profile
+    });
+    throw new FlowPolicyRejectionError(
+      `关键步骤 ${step.id ?? "unknown"} 未获得确认参数: ${allowParam}`,
+      "confirm_rejected",
+      { step_id: step.id, allowParam }
+    );
+  }
+
+  private async applyPacingWait(
+    step: FlowStep,
+    pacing: EffectivePacing,
+    phase: "before" | "after"
+  ): Promise<void> {
+    const baseMs = phase === "before" ? pacing.beforeMs : pacing.afterMs;
+    const waitMs = withJitter(baseMs ?? 0, pacing.jitter, this.random);
+    if (waitMs <= 0) {
+      return;
+    }
+    await this.writeRuntimeEvent(this.currentFlow?.id ?? "unknown", {
+      event: "pacing_wait",
+      step_id: step.id,
+      risk: pacing.risk,
+      wait_ms: waitMs,
+      reason: pacing.reason ?? `${phase}_${pacing.risk}`,
+      profile: pacing.profile
+    });
+    await this.sleeper(waitMs);
   }
 
   private async executeTool(step: FlowStep): Promise<unknown> {
@@ -851,6 +1078,22 @@ export class FlowRunner {
     };
   }
 
+  private async writeRuntimeEvent(
+    flowId: string,
+    event: Omit<FlowRuntimeEvent, "timestamp" | "run_id" | "flow_id">
+  ): Promise<void> {
+    const entry = FlowRuntimeEventSchema.parse({
+      timestamp: formatDateTime(this.clock.now()),
+      run_id: this.currentRunId || createRunId(flowId),
+      flow_id: flowId,
+      store_id: this.storeId ?? this.toolClient.storeId,
+      ...event
+    });
+    const logFile = path.join(this.dataRoot, "logs", "flow_events.jsonl");
+    ensureParentDir(logFile);
+    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
+  }
+
   private async writeRunLog(
     flowId: string,
     status: string,
@@ -895,6 +1138,70 @@ function resolveFlowFile(flowIdOrFilePath: string, repoRoot: string): string {
     return path.resolve(repoRoot, flowIdOrFilePath);
   }
   return path.join(repoRoot, "flows", `${flowIdOrFilePath}.json`);
+}
+
+function resolveEffectivePacing(policy: PacingPolicy | undefined, step: FlowStep): EffectivePacing {
+  const risk = step.risk ?? "read";
+  const flowDefault = policy?.defaults?.[risk] ?? {};
+  return {
+    profile: policy?.profile ?? "standard",
+    risk,
+    jitter: {
+      enabled: policy?.jitter?.enabled ?? false,
+      ratio: policy?.jitter?.ratio ?? 0
+    },
+    ...defaultRiskPacing[risk],
+    ...flowDefault,
+    ...(step.pacing ?? {})
+  };
+}
+
+function resolvePacingLimits(policy: PacingPolicy | undefined): PacingLimits {
+  return {
+    ...(policy?.limits ?? {}),
+    ...(policy?.budgets ?? {})
+  };
+}
+
+function resolveStoreKey(
+  params: Record<string, unknown>,
+  toolClient: Pick<FlowToolClient, "storeId">
+): string {
+  return String(
+    params.store_id ??
+      params.storeId ??
+      toolClient.storeId ??
+      params.store_name ??
+      params.storeName ??
+      "unknown"
+  );
+}
+
+function withJitter(
+  baseMs: number,
+  jitter: { enabled: boolean; ratio: number },
+  random: () => number
+): number {
+  if (!jitter.enabled || baseMs <= 0 || jitter.ratio <= 0) {
+    return Math.round(baseMs);
+  }
+  const spread = baseMs * jitter.ratio;
+  const offset = (random() * 2 - 1) * spread;
+  return Math.max(0, Math.round(baseMs + offset));
+}
+
+function createRunId(flowId: string): string {
+  runSequence += 1;
+  return `run_${flowId}_${Date.now()}_${runSequence}`;
+}
+
+function decrementMap(map: Map<string, number>, key: string): void {
+  const next = (map.get(key) ?? 0) - 1;
+  if (next <= 0) {
+    map.delete(key);
+    return;
+  }
+  map.set(key, next);
 }
 
 function resolveTarget(
@@ -989,6 +1296,10 @@ function numberValue(value: unknown): number | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isTruthy(value: unknown): boolean {
+  return Boolean(value) && !["false", "False", "0", "no", "No"].includes(String(value));
 }
 
 function errorMessage(error: unknown): string {

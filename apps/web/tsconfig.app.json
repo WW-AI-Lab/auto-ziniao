@@ -16,7 +16,7 @@
     "jsx": "react-jsx",
     "baseUrl": "../..",
     "paths": {
-      "@ziniao/schemas/webadmin": ["packages/schemas/src/webadmin.ts"]
+      "@ww-ai-lab/auto-ziniao-schemas/webadmin": ["packages/schemas/src/webadmin.ts"]
     },
 
     /* Linting */

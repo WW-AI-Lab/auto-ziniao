@@ -10,14 +10,14 @@ import {
   writeJsonFileAsync,
   writeTextFile,
   ZiniaoError
-} from "@ziniao/core";
+} from "@ww-ai-lab/auto-ziniao-core";
 import {
   FlowDefinition,
   HealContextSchema,
   HealEventSchema,
   KnownIssue,
   KnownIssuesFileSchema
-} from "@ziniao/schemas";
+} from "@ww-ai-lab/auto-ziniao-schemas";
 
 export type HealErrorType =
   | "auth_failed"
@@ -122,6 +122,10 @@ export type TriggerHealResult = {
   agent?: string;
   known_issue?: KnownIssue;
   error?: string;
+  cli_exit_code?: number;
+  cli_stderr?: string;
+  timed_out?: boolean;
+  command_missing?: boolean;
 };
 
 type RenderFields = Record<string, string>;
@@ -491,7 +495,7 @@ export async function triggerHeal(
   const placeholders = {
     prompt: promptResult.prompt,
     prompt_path: promptResult.prompt_path,
-    session_key: `ziniao-heal:${input.flow_id}`,
+    session_key: `auto-ziniao-heal:${input.flow_id}`,
     flow_id: input.flow_id,
     heal_id: promptResult.heal_id
   };
@@ -501,6 +505,7 @@ export async function triggerHeal(
     command,
     timeoutMs: (agentConfig.timeout_sec ?? 600) * 1000
   });
+  const stderrSummary = summarizeCliText(result.stderr);
   const event = {
     event: "triggered",
     heal_id: promptResult.heal_id,
@@ -514,17 +519,46 @@ export async function triggerHeal(
     status: result.timedOut ? "timeout" : result.exitCode === 0 ? "success" : "failed",
     timestamp: clock.now().toISOString(),
     cli_exit_code: result.exitCode,
-    cli_stderr: (result.stderr ?? "").slice(0, 500)
+    cli_stderr: stderrSummary
   };
   await logHealEvent(repoRoot, event);
 
   if (result.timedOut) {
-    return { ...base, status: "timeout", success: false, agent: agentName, error: "CLI timeout" };
+    return {
+      ...base,
+      status: "timeout",
+      success: false,
+      agent: agentName,
+      error: stderrSummary || "CLI timeout",
+      cli_exit_code: result.exitCode,
+      cli_stderr: stderrSummary,
+      timed_out: true
+    };
   }
   if (result.commandMissing) {
-    return { ...base, status: "failed", success: false, agent: agentName, error: `${command[0]} not found` };
+    return {
+      ...base,
+      status: "failed",
+      success: false,
+      agent: agentName,
+      error: stderrSummary || `${command[0]} not found`,
+      cli_exit_code: result.exitCode,
+      cli_stderr: stderrSummary,
+      command_missing: true
+    };
   }
-  return { ...base, status: result.exitCode === 0 ? "success" : "failed", success: result.exitCode === 0, agent: agentName };
+  if (result.exitCode !== 0) {
+    return {
+      ...base,
+      status: "failed",
+      success: false,
+      agent: agentName,
+      error: stderrSummary || `Agent CLI exit ${result.exitCode}`,
+      cli_exit_code: result.exitCode,
+      cli_stderr: stderrSummary
+    };
+  }
+  return { ...base, status: "success", success: true, agent: agentName };
 }
 
 export function createCommandAgentRunner(): AgentRunner {
@@ -656,7 +690,7 @@ function buildPromptPrefix(): string {
     "2. 只能通过紫鸟店铺浏览器环境诊断，不得改用本机浏览器",
     "3. 找到根因：页面结构变化、选择器失效、超时、认证过期或环境问题",
     "4. 修复流程定义 JSON 或 extracts/ 下的提取脚本",
-    "5. 重新执行修复后的流程验证：cd {scripts_dir} && pnpm ziniao run {flow_id} -v --no-heal",
+    "5. 重新执行修复后的流程验证：cd {scripts_dir} && pnpm auto-ziniao run {flow_id} -v --no-heal",
     "6. 将修复方案写入 {scripts_dir}/learnings/known_issues.json",
     "",
     "## 失败上下文",
@@ -676,8 +710,8 @@ function buildPromptFooter(): string {
   return [
     "## 修复后必须执行（固化闭环）",
     "1. 更新 {scripts_dir}/flows/{flow_id}.json 或对应的 extracts/*.js（修复根因，版本号 version +1）",
-    "2. 校验: pnpm ziniao validate {flow_id}",
-    "3. 验证: pnpm ziniao run {flow_id} -v --no-heal（必须真实跑通）",
+    "2. 校验: pnpm auto-ziniao validate {flow_id}",
+    "3. 验证: pnpm auto-ziniao run {flow_id} -v --no-heal（必须真实跑通）",
     "4. 将修复写入 {scripts_dir}/learnings/known_issues.json 的 issues 数组",
     "5. 通知用户：修复了什么、根因、验证结果"
   ].join("\n");
@@ -762,6 +796,10 @@ function formatDateTime(date: Date): string {
   })
     .format(date)
     .replace(/\//g, "-");
+}
+
+function summarizeCliText(value: string | undefined): string {
+  return String(value ?? "").slice(0, 500);
 }
 
 function asString(value: unknown): string | undefined {

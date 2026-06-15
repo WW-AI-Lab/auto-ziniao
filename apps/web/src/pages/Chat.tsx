@@ -1,74 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  App, Avatar, Button, Collapse, Empty, Select, Space, Spin, Tag, Typography,
+  App, Avatar, Button, Empty, Select, Space, Spin, Typography,
 } from 'antd'
 import {
-  PlusOutlined, RobotOutlined, ToolOutlined, UserOutlined,
+  PlusOutlined, RobotOutlined, UserOutlined,
 } from '@ant-design/icons'
 import { Bubble, Conversations, Sender } from '@ant-design/x'
 import {
   del, get, post, put, sendChatMessage,
-  type AgentInfo, type ChatMessage, type ChatSession, type ChatToolCall,
+  type AgentInfo, type ChatA2UIBlock, type ChatMessage, type ChatSession, type ChatToolCall,
 } from '../api'
+import { RichMessage } from '../components/chat/RichMessage'
 
 /** 流式接收中的累积状态（done=SSE 已结束，等打字机动画收尾） */
 interface StreamState {
   text: string
   reasoning: string
   tools: ChatToolCall[]
+  a2ui: ChatA2UIBlock[]
   done: boolean
   failed: boolean
-}
-
-/** 推理（折叠面板）+ 工具调用标签，渲染在气泡 header 槽位 */
-function ExtrasBlock({ reasoning, tools, thinking, failed }: {
-  reasoning?: string
-  tools?: ChatToolCall[]
-  thinking?: boolean
-  failed?: boolean
-}) {
-  const hasTools = !!tools?.length
-  if (!reasoning && !hasTools && !failed) return null
-  return (
-    <div style={{ maxWidth: 640 }}>
-      {failed && (
-        <Typography.Text type="danger" style={{ fontSize: 12 }}>执行失败</Typography.Text>
-      )}
-      {reasoning && (
-        <Collapse
-          ghost
-          size="small"
-          defaultActiveKey={thinking ? ['r'] : []}
-          style={{ background: '#fafafa', borderRadius: 8, marginBottom: 4 }}
-          items={[{
-            key: 'r',
-            label: (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {thinking ? '思考中…' : '思考过程'}
-              </Typography.Text>
-            ),
-            children: (
-              <div style={{
-                whiteSpace: 'pre-wrap', fontSize: 12, color: '#8c8c8c',
-                maxHeight: 220, overflow: 'auto',
-              }}>
-                {reasoning}
-              </div>
-            ),
-          }]}
-        />
-      )}
-      {hasTools && (
-        <Space wrap size={4} style={{ marginBottom: 4 }}>
-          {tools!.map((t, i) => (
-            <Tag key={i} icon={<ToolOutlined />} color="blue" style={{ margin: 0 }}>
-              {t.name}
-            </Tag>
-          ))}
-        </Space>
-      )}
-    </div>
-  )
 }
 
 export default function Chat() {
@@ -139,8 +90,8 @@ export default function Chat() {
     const tmpUserId = -Date.now()
     const tmpAsstId = tmpUserId - 1
     streamingIdRef.current = tmpAsstId
-    const acc: StreamState = { text: '', reasoning: '', tools: [], done: false, failed: false }
-    const pushStream = () => setStream({ ...acc, tools: [...acc.tools] })
+    const acc: StreamState = { text: '', reasoning: '', tools: [], a2ui: [], done: false, failed: false }
+    const pushStream = () => setStream({ ...acc, tools: [...acc.tools], a2ui: [...acc.a2ui] })
     pushStream()
     setMessages((prev) => [
       ...prev,
@@ -166,7 +117,16 @@ export default function Chat() {
       await sendChatMessage(sid, text, (evt) => {
         if (evt.type === 'delta') acc.text += evt.text
         else if (evt.type === 'reasoning_delta') acc.reasoning += evt.text
-        else if (evt.type === 'tool_call') acc.tools.push({ name: evt.name })
+        else if (evt.type === 'tool_call') {
+          acc.tools.push({
+            id: evt.id,
+            name: evt.name,
+            status: evt.status,
+            args_summary: evt.args_summary,
+            result_summary: evt.result_summary,
+            error: evt.error,
+          })
+        } else if (evt.type === 'a2ui') acc.a2ui.push(evt.block)
         else if (evt.type === 'error') {
           acc.failed = true
           setMessages((prev) => prev.map((m) =>
@@ -182,9 +142,7 @@ export default function Chat() {
       if (!acc.text || acc.failed) {
         finalize()
       } else {
-        // 兜底：动画依赖 rAF，页面切后台会被暂停，超时后强制收尾（finalize 幂等）
-        const graceMs = Math.min(acc.text.length * 25 + 5000, 60000)
-        setTimeout(finalize, graceMs)
+        setTimeout(finalize, 300)
       }
     } catch (e) {
       message.error((e as Error).message)
@@ -208,35 +166,34 @@ export default function Chat() {
       return {
         key: m.id,
         role: 'ai' as const,
-        content: stream.failed && m.error
-          ? `${stream.text ? stream.text + '\n\n' : ''}❌ ${m.error}`
-          : stream.text,
-        loading: !stream.text && !stream.reasoning && !stream.tools.length && !stream.failed,
-        header: (
-          <ExtrasBlock
+        content: (
+          <RichMessage
+            content={stream.text}
             reasoning={stream.reasoning}
             tools={stream.tools}
+            a2ui={stream.a2ui}
             thinking={!stream.done && !stream.failed}
             failed={stream.failed}
+            error={m.error}
+            streaming={!stream.done}
           />
         ),
-        typing: { effect: 'typing' as const, step: [2, 6] as [number, number], interval: 20 },
+        loading: !stream.text && !stream.reasoning && !stream.tools.length && !stream.a2ui.length && !stream.failed,
         streaming: !stream.done,
-        onTypingComplete: () => finalizeRef.current?.(),
       }
     }
     const failed = m.status === 'failed'
     return {
       key: m.id,
       role: 'ai' as const,
-      content: failed
-        ? `${m.content ? m.content + '\n\n' : ''}❌ ${m.error ?? '发送失败'}`
-        : m.content,
-      header: (
-        <ExtrasBlock
+      content: (
+        <RichMessage
+          content={m.content}
           reasoning={m.extras?.reasoning}
           tools={m.extras?.tools}
+          a2ui={m.extras?.a2ui}
           failed={failed}
+          error={m.error}
         />
       ),
     }

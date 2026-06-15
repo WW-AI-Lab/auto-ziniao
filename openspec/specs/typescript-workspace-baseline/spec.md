@@ -7,7 +7,7 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 系统 SHALL 提供 TypeScript/Node.js workspace 基线，承载 `packages/*` 和 `apps/*`。M7 后 Python 运行时已移除，workspace 为唯一生产运行基础。
 
 #### Scenario: TS workspace 是唯一生产入口 (M7)
-- **WHEN** M7 完成后用户执行 `pnpm ziniao validate orders_overview`
+- **WHEN** M7 完成后用户执行 `pnpm auto-ziniao validate orders_overview`
 - **THEN** 命令通过 TS workspace 执行；Python 入口已移除，历史恢复通过 git（commit `68d7db8a`）
 
 #### Scenario: TS workspace 可独立验证
@@ -27,15 +27,15 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 
 #### Scenario: flow-engine 只通过 zclaw 调度工具
 - **WHEN** 审查 `packages/flow-engine` 源码
-- **THEN** flow-engine 可以依赖 `@ziniao/zclaw` 或注入兼容 tool client，但不得直接拼接 ZClaw bridge HTTP 请求
+- **THEN** flow-engine 可以依赖 `@ww-ai-lab/auto-ziniao-zclaw` 或注入兼容 tool client，但不得直接拼接 ZClaw bridge HTTP 请求
 
 #### Scenario: self-heal 不访问 bridge
 - **WHEN** 审查 `packages/self-heal` 源码
-- **THEN** self-heal 不依赖 `@ziniao/zclaw`，不读取 ZClaw API key，不直接访问 bridge，不打开本机浏览器
+- **THEN** self-heal 不依赖 `@ww-ai-lab/auto-ziniao-zclaw`，不读取 ZClaw API key，不直接访问 bridge，不打开本机浏览器
 
 #### Scenario: cli 只做命令编排
 - **WHEN** 审查 `packages/cli` 源码
-- **THEN** CLI 不直接访问 bridge、不读取 ZClaw API key、不实现 flow DSL 或 self-heal 业务规则，只通过 `@ziniao/flow-engine` 和 `@ziniao/self-heal` 编排命令
+- **THEN** CLI 不直接访问 bridge、不读取 ZClaw API key、不实现 flow DSL 或 self-heal 业务规则，只通过 `@ww-ai-lab/auto-ziniao-flow-engine` 和 `@ww-ai-lab/auto-ziniao-self-heal` 编排命令
 
 #### Scenario: webadmin-api 只做 Web 服务编排
 - **WHEN** 审查 `apps/webadmin-api` 源码

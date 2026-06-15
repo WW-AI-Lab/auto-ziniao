@@ -66,6 +66,10 @@ curl -X POST {api}/api/flows \
 - `steps` 只写本会话真实跑通过的工具调用和内置动作。
 - `tool` 字段只能使用 `GET /zclaw/tools` 返回的真实工具名；不要臆造 `navigate`、`open_url`、`run_script` 等名字。
 - `storeId`、`targetId` 等运行态字段通常由引擎注入；除非本会话验证明确需要，不要硬编码。
+- 操作类步骤必须声明 `risk`：`read`、`navigate`、`write`、`critical`。`click_element`、`input_text`、`scroll_page`、`run_automation` 未声明 `risk` 会产生 warning，不要把 warning 当作可忽略事项。
+- `risk: "write"` 或 `risk: "critical"` 必须有后置验证：当前 step `validate`、紧邻后续 `assert`、`wait_for_element`、`wait_for_navigation`，或确有理由时显式 `pacing.postconditionExempt: true`。
+- `risk: "critical"` 必须声明 `confirm`。默认用运行参数 `allow_critical` 授权；如需更细粒度，用 `confirm.allowParam`，例如 `allow_submit_order`。未授权时 flow-engine 不会调用目标工具，且 `on_fail.retry` 不得绕过确认。
+- `pacing` 只表达可审计的节奏、预算和确认策略，不做浏览器指纹、随机鼠标、反检测或其它 ZClaw 工具清单之外的行为。
 - 关键提取步骤必须配置 `validate`，避免空数据假成功。
 - 可能失败的步骤必须配置 `on_fail`：加载慢等瞬时问题用 `retry`，页面结构变化用 `heal` 并写 `context`。
 - 有状态差异的页面用 `branch` 覆盖，例如已登录/未登录、有数据/无数据、已是目标状态。
@@ -77,6 +81,7 @@ curl -X POST {api}/api/flows \
 {
   "id": "step_id",
   "tool": "visit_page",
+  "risk": "navigate",
   "args": {
     "url": "https://example.com",
     "waitUntil": "load"
@@ -92,6 +97,65 @@ curl -X POST {api}/api/flows \
   },
   "goto": "next_step"
 }
+```
+
+顶层 pacing 示例：
+
+```json
+{
+  "pacing": {
+    "profile": "standard",
+    "jitter": { "enabled": false, "ratio": 0 },
+    "limits": {
+      "perStoreConcurrency": 1,
+      "perFlowConcurrency": 1,
+      "maxConsecutiveFailures": 3,
+      "maxRunPerDay": 24
+    },
+    "defaults": {
+      "write": { "beforeMs": 1000, "afterMs": 2000 },
+      "critical": { "requiresConfirm": true, "beforeMs": 2000, "afterMs": 3000 }
+    }
+  }
+}
+```
+
+写操作示例：
+
+```json
+{
+  "id": "apply_filter",
+  "tool": "click_element",
+  "risk": "write",
+  "args": { "selector": "button[type=submit]" },
+  "validate": { "contains": "筛选结果" },
+  "on_fail": { "action": "heal", "context": "filter_submit_failed" }
+}
+```
+
+关键操作示例：
+
+```json
+{
+  "id": "submit_order_action",
+  "tool": "click_element",
+  "risk": "critical",
+  "confirm": {
+    "allowParam": "allow_submit_order",
+    "message": "确认提交订单相关操作"
+  },
+  "args": { "selector": "button.submit-order" },
+  "validate": { "contains": "提交成功" },
+  "on_fail": { "action": "abort", "context": "critical_submit_failed" }
+}
+```
+
+运行 critical flow 时，run 请求必须显式传授权参数：
+
+```bash
+curl -X POST {api}/api/flows/<flow_id>/run \
+  -H "Content-Type: application/json" \
+  -d '{"params":{"store_name":"<店铺名>","allow_submit_order":true}}'
 ```
 
 常用内置动作：
@@ -161,6 +225,7 @@ flow 中引用：
 {
   "id": "extract_orders",
   "tool": "execute_script",
+  "risk": "read",
   "args": {
     "script": "@extracts/<name>.js"
   },
@@ -231,6 +296,10 @@ curl "{api}/api/outputs/preview?path=<file>"
 ```text
 - [ ] 只使用本会话真实跑通的 URL、选择器、工具和 args
 - [ ] params 声明至少包含 store_name，无硬编码店铺名/日期
+- [ ] `click_element` / `input_text` / `scroll_page` / `run_automation` 等操作类步骤已声明 `risk`
+- [ ] `write` / `critical` 步骤有 validate/assert/wait 后置验证，或明确 `pacing.postconditionExempt: true`
+- [ ] `critical` 步骤已声明 `confirm`，运行时需要显式 allow 参数，且不进入无人值守 schedule
+- [ ] 如涉及同店铺并发、连续失败或每日预算，顶层 `pacing.limits` / `pacing.budgets` 已声明
 - [ ] extract 通过 WebAdmin API 保存，IIFE，return JSON.stringify(...)
 - [ ] extract 不使用 JS 模板字符串
 - [ ] 关键提取步骤有 validate

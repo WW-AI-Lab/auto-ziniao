@@ -2,6 +2,7 @@
 
 import type {
   ChatAgentInfo,
+  ChatA2UIBlock,
   ChatMessage,
   ChatSession,
   ChatToolCall,
@@ -25,7 +26,7 @@ import type {
   Schedule,
   ScheduleRun,
   WebAdminStats,
-} from '@ziniao/schemas/webadmin'
+} from '@ww-ai-lab/auto-ziniao-schemas/webadmin'
 
 export class ApiError extends Error {
   code: string
@@ -84,6 +85,7 @@ export function del<T>(url: string): Promise<T> {
 export type {
   ChatMessage,
   ChatSession,
+  ChatA2UIBlock,
   ChatToolCall,
   CreateFlowRequest,
   CreateFlowResponse,
@@ -114,12 +116,15 @@ export type Stats = WebAdminStats
 // ---------------------------------------------------------------------
 
 export type ChatEvent =
+  | { type: 'accepted'; message_id?: number }
   | { type: 'start'; message_id: number }
   | { type: 'delta'; text: string }
   | { type: 'reasoning_delta'; text: string }
-  | { type: 'tool_call'; name: string }
+  | ({ type: 'tool_call' } & ChatToolCall)
+  | { type: 'a2ui'; block: ChatA2UIBlock }
   | { type: 'done'; content: string }
   | { type: 'error'; message: string }
+  | { type: 'heartbeat' }
 
 export async function sendChatMessage(
   sessionId: string,

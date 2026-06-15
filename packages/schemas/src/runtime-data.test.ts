@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FlowRuntimeEventSchema,
   HealContextSchema,
   HealEventSchema,
   KnownIssuesFileSchema
@@ -36,7 +37,7 @@ describe("runtime data schemas", () => {
       step_id: "extract",
       error_type: "extract_failed",
       agent: "openclaw",
-      session_key: "ziniao-heal:orders",
+      session_key: "auto-ziniao-heal:orders",
       prompt_path: "/tmp/prompt.md",
       heal_log_path: "/tmp/context.json",
       cli_exit_code: 0,
@@ -51,5 +52,28 @@ describe("runtime data schemas", () => {
       issues: [{ pattern: "selector changed" }]
     });
     expect(parsed.issues[0]?.resolved).toBe(false);
+  });
+
+  it("parses flow pacing runtime events", () => {
+    const event = FlowRuntimeEventSchema.parse({
+      event: "pacing_wait",
+      timestamp: "2026-06-14 11:04:05",
+      run_id: "run_1",
+      flow_id: "orders_overview",
+      step_id: "click_filter",
+      wait_ms: 1000,
+      reason: "after_write",
+      future: true
+    });
+    expect(event.wait_ms).toBe(1000);
+    expect(event.future).toBe(true);
+
+    expect(() =>
+      FlowRuntimeEventSchema.parse({
+        event: "pacing_wait",
+        timestamp: "2026-06-14 11:04:05",
+        run_id: "run_1"
+      })
+    ).toThrow(/flow_id/);
   });
 });

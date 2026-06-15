@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   appendJsonLine,
   ensureDir,
+  findRepoRoot,
+  findRepoRootOptional,
   readJsonFile,
   readJsonLinesFile,
   writeJsonFile,
@@ -28,6 +30,15 @@ function tempRoot(): string {
 }
 
 describe("file helpers", () => {
+  it("finds repo roots strictly or optionally", () => {
+    const root = tempRoot();
+    ensureDir(path.join(root, "flows"));
+    writeFileSync(path.join(root, "AGENTS.md"), "# rules\n");
+    expect(findRepoRoot(path.join(root, "flows"))).toBe(root);
+    expect(findRepoRootOptional(path.join(root, "flows"))).toBe(root);
+    expect(findRepoRootOptional(tempRoot())).toBeUndefined();
+  });
+
   it("creates nested directories and writes json", async () => {
     const root = tempRoot();
     const jsonPath = path.join(root, "a/b/value.json");

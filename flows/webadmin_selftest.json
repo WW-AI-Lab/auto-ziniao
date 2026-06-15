@@ -3,7 +3,7 @@
   "name": "webadmin自测流程",
   "version": 7,
   "enabled": false,
-  "description": "webadmin 验证专用：仅 print/sleep 动作，不调用 ZClaw bridge。验证完成后删除。",
+  "description": "本地验证专用：仅 print/sleep 动作，不调用 ZClaw bridge。",
   "params": {
     "greeting": "hello"
   },

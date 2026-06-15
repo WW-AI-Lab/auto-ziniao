@@ -14,6 +14,10 @@ export const HealSummarySchema = z
     agent: z.string().optional(),
     reason: z.string().optional(),
     error: z.string().optional(),
+    cli_exit_code: z.number().int().optional(),
+    cli_stderr: z.string().optional(),
+    timed_out: z.boolean().optional(),
+    command_missing: z.boolean().optional(),
     prompt_path: z.string().optional(),
     heal_log_path: z.string().optional(),
     context_available: z.boolean().optional(),
@@ -125,12 +129,37 @@ export const ScheduleSchema = z
   })
   .passthrough();
 
-export const ChatToolCallSchema = z.object({ name: z.string() }).passthrough();
+export const ChatToolCallSchema = z
+  .object({
+    id: z.string().optional(),
+    name: z.string(),
+    status: z.enum(["pending", "running", "success", "failed", "skipped"]).or(z.string()).optional(),
+    args_summary: z.string().optional(),
+    result_summary: z.string().optional(),
+    error: z.string().optional()
+  })
+  .passthrough();
+
+export const ChatA2UIBlockSchema = z
+  .object({
+    id: z.string().optional(),
+    type: z.enum(["text", "table", "description", "steps", "json", "alert"]).or(z.string()),
+    title: z.string().optional(),
+    text: z.string().optional(),
+    level: z.enum(["info", "success", "warning", "error"]).or(z.string()).optional(),
+    columns: z.array(z.string()).optional(),
+    rows: z.array(UnknownRecordSchema).optional(),
+    items: z.array(z.unknown()).optional(),
+    data: z.unknown().optional(),
+    props: UnknownRecordSchema.optional()
+  })
+  .passthrough();
 
 export const ChatExtrasSchema = z
   .object({
     reasoning: z.string().optional(),
-    tools: z.array(ChatToolCallSchema).optional()
+    tools: z.array(ChatToolCallSchema).optional(),
+    a2ui: z.array(ChatA2UIBlockSchema).optional()
   })
   .passthrough();
 
@@ -316,7 +345,11 @@ export const HealEntrySchema = z
     flow_id: z.string().optional(),
     step_id: z.string().optional(),
     error_type: z.string().optional(),
-    reason: z.string().optional()
+    reason: z.string().optional(),
+    cli_exit_code: z.number().int().optional(),
+    cli_stderr: z.string().optional(),
+    timed_out: z.boolean().optional(),
+    command_missing: z.boolean().optional()
   })
   .passthrough();
 
@@ -364,7 +397,20 @@ export const ChatSseEventSchema = z
     z.object({ type: z.literal("start"), session_id: z.string().optional(), message_id: z.number().optional() }).passthrough(),
     z.object({ type: z.literal("delta"), session_id: z.string().optional(), message_id: z.number().optional(), text: z.string().default("") }).passthrough(),
     z.object({ type: z.literal("reasoning_delta"), session_id: z.string().optional(), message_id: z.number().optional(), text: z.string().default("") }).passthrough(),
-    z.object({ type: z.literal("tool_call"), session_id: z.string().optional(), message_id: z.number().optional(), name: z.string() }).passthrough(),
+    z
+      .object({
+        type: z.literal("tool_call"),
+        session_id: z.string().optional(),
+        message_id: z.number().optional(),
+        id: z.string().optional(),
+        name: z.string(),
+        status: z.enum(["pending", "running", "success", "failed", "skipped"]).or(z.string()).optional(),
+        args_summary: z.string().optional(),
+        result_summary: z.string().optional(),
+        error: z.string().optional()
+      })
+      .passthrough(),
+    z.object({ type: z.literal("a2ui"), session_id: z.string().optional(), message_id: z.number().optional(), block: ChatA2UIBlockSchema }).passthrough(),
     z.object({ type: z.literal("done"), session_id: z.string().optional(), message_id: z.number().optional(), content: z.string().optional() }).passthrough(),
     z.object({ type: z.literal("error"), session_id: z.string().optional(), message_id: z.number().optional(), message: z.string() }).passthrough(),
     z.object({ type: z.literal("heartbeat") }).passthrough()
@@ -379,6 +425,7 @@ export type FailedStep = z.infer<typeof FailedStepSchema>;
 export type FlowRunHistoryItem = z.infer<typeof FlowRunHistoryItemSchema>;
 export type FlowRunDetail = z.infer<typeof FlowRunDetailSchema>;
 export type ChatToolCall = z.infer<typeof ChatToolCallSchema>;
+export type ChatA2UIBlock = z.infer<typeof ChatA2UIBlockSchema>;
 export type ChatExtras = z.infer<typeof ChatExtrasSchema>;
 export type ChatSession = z.infer<typeof ChatSessionSchema>;
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;

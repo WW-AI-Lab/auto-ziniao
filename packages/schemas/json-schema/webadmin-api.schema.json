@@ -210,6 +210,18 @@
                             "error": {
                               "type": "string"
                             },
+                            "cli_exit_code": {
+                              "type": "integer"
+                            },
+                            "cli_stderr": {
+                              "type": "string"
+                            },
+                            "timed_out": {
+                              "type": "boolean"
+                            },
+                            "command_missing": {
+                              "type": "boolean"
+                            },
                             "prompt_path": {
                               "type": "string"
                             },
@@ -359,6 +371,18 @@
                     "error": {
                       "type": "string"
                     },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
                     "prompt_path": {
                       "type": "string"
                     },
@@ -486,12 +510,118 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "id": {
+                            "type": "string"
+                          },
                           "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "running",
+                                  "success",
+                                  "failed",
+                                  "skipped"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "args_summary": {
+                            "type": "string"
+                          },
+                          "result_summary": {
+                            "type": "string"
+                          },
+                          "error": {
                             "type": "string"
                           }
                         },
                         "required": [
                           "name"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    "a2ui": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "text",
+                                  "table",
+                                  "description",
+                                  "steps",
+                                  "json",
+                                  "alert"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "level": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "info",
+                                  "success",
+                                  "warning",
+                                  "error"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "columns": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "rows": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {}
+                          },
+                          "data": {},
+                          "props": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "type"
                         ],
                         "additionalProperties": true
                       }
@@ -866,6 +996,18 @@
             "error": {
               "type": "string"
             },
+            "cli_exit_code": {
+              "type": "integer"
+            },
+            "cli_stderr": {
+              "type": "string"
+            },
+            "timed_out": {
+              "type": "boolean"
+            },
+            "command_missing": {
+              "type": "boolean"
+            },
             "prompt_path": {
               "type": "string"
             },
@@ -1147,6 +1289,18 @@
                     "error": {
                       "type": "string"
                     },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
                     "prompt_path": {
                       "type": "string"
                     },
@@ -1401,6 +1555,18 @@
                     "error": {
                       "type": "string"
                     },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
                     "prompt_path": {
                       "type": "string"
                     },
@@ -1649,6 +1815,18 @@
                     "error": {
                       "type": "string"
                     },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
                     "prompt_path": {
                       "type": "string"
                     },
@@ -1877,6 +2055,18 @@
             },
             "reason": {
               "type": "string"
+            },
+            "cli_exit_code": {
+              "type": "integer"
+            },
+            "cli_stderr": {
+              "type": "string"
+            },
+            "timed_out": {
+              "type": "boolean"
+            },
+            "command_missing": {
+              "type": "boolean"
             }
           },
           "additionalProperties": true
@@ -2136,13 +2326,136 @@
                     "message_id": {
                       "type": "number"
                     },
+                    "id": {
+                      "type": "string"
+                    },
                     "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "running",
+                            "success",
+                            "failed",
+                            "skipped"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "args_summary": {
+                      "type": "string"
+                    },
+                    "result_summary": {
+                      "type": "string"
+                    },
+                    "error": {
                       "type": "string"
                     }
                   },
                   "required": [
                     "type",
                     "name"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "a2ui"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "block": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "table",
+                                "description",
+                                "steps",
+                                "json",
+                                "alert"
+                              ]
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "info",
+                                "success",
+                                "warning",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "columns": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {}
+                        },
+                        "data": {},
+                        "props": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "block"
                   ],
                   "additionalProperties": true
                 },

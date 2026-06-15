@@ -1,7 +1,13 @@
 {
-  "name": "@ziniao/schemas",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@ww-ai-lab/auto-ziniao-schemas",
+  "version": "0.1.1",
+  "description": "Zod contracts and JSON schemas for Auto Ziniao flows and WebAdmin APIs.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "directory": "packages/schemas"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,13 +21,25 @@
       "import": "./dist/webadmin.js"
     }
   },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "!dist/**/*.test.*",
+    "json-schema",
+    "package.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
     "schemas:export": "tsx scripts/export-json-schema.ts"
   },
   "dependencies": {
-    "@ziniao/core": "workspace:*",
+    "@ww-ai-lab/auto-ziniao-core": "workspace:*",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.25.0"
   },

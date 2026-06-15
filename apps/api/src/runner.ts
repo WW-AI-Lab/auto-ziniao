@@ -1,6 +1,6 @@
-import { FlowDefinition } from "@ziniao/schemas";
-import { loadFlow, runFlow, FlowToolClient, FlowRunFailure, FlowRunResult } from "@ziniao/flow-engine";
-import { AgentRunner, buildTriggerInputFromFailure, HealConfig, triggerHeal, TriggerHealResult } from "@ziniao/self-heal";
+import { FlowDefinition } from "@ww-ai-lab/auto-ziniao-schemas";
+import { loadFlow, runFlow, FlowToolClient, FlowRunFailure, FlowRunResult } from "@ww-ai-lab/auto-ziniao-flow-engine";
+import { AgentRunner, buildTriggerInputFromFailure, HealConfig, triggerHeal, TriggerHealResult } from "@ww-ai-lab/auto-ziniao-self-heal";
 import { Storage } from "./storage.js";
 
 export type Clock = { now(): Date };
@@ -259,6 +259,10 @@ function healSummaryFromResult(result: TriggerHealResult) {
     agent: result.agent,
     reason: result.reason,
     error: result.error,
+    cli_exit_code: result.cli_exit_code,
+    cli_stderr: result.cli_stderr,
+    timed_out: result.timed_out,
+    command_missing: result.command_missing,
     prompt_path: result.prompt_path,
     heal_log_path: result.heal_log_path,
     detail_url: `/api/heals/${result.heal_id}`
