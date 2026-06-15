@@ -1,0 +1,7 @@
+{
+  "id": "missing_steps",
+  "name": "缺少步骤",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：缺少 steps"
+}

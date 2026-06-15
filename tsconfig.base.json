@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ww-ai-lab/auto-ziniao-core": ["packages/core/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao-schemas": ["packages/schemas/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao-schemas/webadmin": ["packages/schemas/src/webadmin.ts"],
+      "@ww-ai-lab/auto-ziniao-zclaw": ["packages/zclaw/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao-flow-engine": ["packages/flow-engine/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao-self-heal": ["packages/self-heal/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao": ["packages/cli/src/index.ts"],
+      "@ww/api": ["apps/api/src/index.ts"],
+      "@ww-ai-lab/auto-ziniao-web": ["apps/web/src/main.tsx"]
+    },
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "types": ["node"]
+  }
+}

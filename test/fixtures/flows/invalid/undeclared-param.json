@@ -1,0 +1,13 @@
+{
+  "id": "undeclared_param",
+  "name": "未声明参数",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：未声明参数 warning",
+  "params": {
+    "declared": "ok"
+  },
+  "steps": [
+    { "id": "say", "action": "print", "message": "${params.not_declared}" }
+  ]
+}

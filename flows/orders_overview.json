@@ -1,0 +1,70 @@
+{
+  "id": "orders_overview",
+  "name": "订单概览",
+  "version": 2,
+  "enabled": true,
+  "schedule": "*/30 * * * *",
+  "description": "检查 Amazon 订单状态概览：待发货、濒临取消、濒临延迟等",
+  "retry": { "maxAttempts": 2, "delayMs": 5000 },
+  "params": {
+    "store_name": "",
+    "_comment": "store_name 为空时自动使用店铺列表中的第一个店铺"
+  },
+  "steps": [
+    {
+      "id": "list_stores",
+      "tool": "list_stores",
+      "save": "stores",
+      "on_fail": { "action": "abort", "context": "bridge_down" }
+    },
+    {
+      "id": "open_store",
+      "tool": "open_store",
+      "store_selector": "first",
+      "save": "store",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "nav_orders",
+      "tool": "visit_page",
+      "args": {
+        "url": "https://sellercentral.amazon.com/orders-v3/list",
+        "waitUntil": "domcontentloaded",
+        "timeoutMs": 30000
+      },
+      "on_fail": { "action": "retry", "delayMs": 5000, "maxAttempts": 2, "context": "nav_failed" }
+    },
+    {
+      "id": "wait_page",
+      "action": "sleep",
+      "seconds": 3
+    },
+    {
+      "id": "extract_orders",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/extract_orders_overview.js",
+        "returnByValue": true
+      },
+      "save": "orders_data",
+      "on_fail": { "action": "heal", "context": "extract_failed" },
+      "validate": { "not_empty": true, "require_fields": ["url"] }
+    },
+    {
+      "id": "save_orders",
+      "action": "save_json",
+      "data": "${orders_data}",
+      "filename": "orders_${date}.json"
+    },
+    {
+      "id": "close_store",
+      "tool": "close_store",
+      "on_fail": { "action": "skip" }
+    }
+  ],
+  "on_success": { "close_store": false },
+  "on_fail_final": { "notify": true, "close_store": true },
+  "heal": {
+    "hints": "订单页 URL 为 /orders-v3/list。提取脚本 extracts/extract_orders_overview.js 用正则从 body.innerText 匹配「等待中/未发货/濒临取消」等中文标签计数。如果店铺站点语言被切到英文，正则会全部匹配 0——这时应先跑 switch_language 流程切回中文，或更新正则兼容英文。"
+  }
+}

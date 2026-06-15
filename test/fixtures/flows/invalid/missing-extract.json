@@ -1,0 +1,14 @@
+{
+  "id": "missing_extract",
+  "name": "缺失提取脚本",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：缺失 extract 文件",
+  "steps": [
+    {
+      "id": "extract",
+      "tool": "execute_script",
+      "args": { "script": "@extracts/missing.js", "returnByValue": true }
+    }
+  ]
+}

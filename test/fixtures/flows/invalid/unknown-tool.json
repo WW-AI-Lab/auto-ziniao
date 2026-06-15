@@ -1,0 +1,10 @@
+{
+  "id": "unknown_tool",
+  "name": "未知工具",
+  "version": 1,
+  "enabled": true,
+  "description": "非法样本：未知工具",
+  "steps": [
+    { "id": "nav", "tool": "navigate" }
+  ]
+}

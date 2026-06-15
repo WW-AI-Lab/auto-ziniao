@@ -1,0 +1,45 @@
+{
+  "name": "auto-ziniao-workspace",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Workspace for Auto Ziniao, a ZClaw-based reusable store-operation flow engine.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ww-ai-lab/auto-ziniao/issues"
+  },
+  "homepage": "https://github.com/ww-ai-lab/auto-ziniao#readme",
+  "keywords": [
+    "auto-ziniao",
+    "zclaw",
+    "automation",
+    "flow",
+    "self-heal"
+  ],
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/api && pnpm --filter @ww-ai-lab/auto-ziniao-web build",
+    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/api apps/web --pretty false",
+    "test": "vitest run",
+    "auto-ziniao": "tsx packages/cli/src/bin/auto-ziniao.ts",
+    "api": "tsx apps/api/src/index.ts",
+    "web": "pnpm --filter @ww-ai-lab/auto-ziniao-web dev",
+    "web:build": "pnpm --filter @ww-ai-lab/auto-ziniao-web build",
+    "schemas:export": "tsx packages/schemas/scripts/export-json-schema.ts",
+    "security:scan": "tsx scripts/security-scan.ts",
+    "validate:baseline": "pnpm typecheck && pnpm test && pnpm build && pnpm schemas:export -- --check && pnpm security:scan"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  }
+}

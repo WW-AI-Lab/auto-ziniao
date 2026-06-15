@@ -1,0 +1,20 @@
+# 运行时数据（日志/产出/备份/数据库）
+data/
+config.json
+learnings/heals.jsonl
+
+# TypeScript workspace
+node_modules/
+packages/*/dist/
+apps/*/dist/
+*.tgz
+
+# macOS
+.DS_Store
+
+# IDE 本地配置（含绝对路径，不应提交）
+.qoder/settings.local.json
+.qoder/
+.codex/
+.cursor/commands/
+.cursor/skills/openspec-*

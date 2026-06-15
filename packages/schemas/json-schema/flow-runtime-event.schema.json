@@ -1,0 +1,67 @@
+{
+  "$ref": "#/definitions/FlowRuntimeEvent",
+  "definitions": {
+    "FlowRuntimeEvent": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "flow_id": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "event": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "pacing_wait",
+                "confirm_rejected",
+                "budget_rejected",
+                "store_lock_wait",
+                "store_lock_acquired",
+                "store_lock_released"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "store_id": {
+          "type": "string"
+        },
+        "store_name": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string"
+        },
+        "wait_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "run_id",
+        "flow_id",
+        "event"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

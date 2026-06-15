@@ -1,0 +1,126 @@
+{
+  "id": "switch_language",
+  "name": "切换站点语言",
+  "version": 2,
+  "enabled": true,
+  "schedule": "",
+  "description": "检测当前语言，已是目标语言则直接结束（分支跳过切换），否则通过设置菜单切换并验证",
+  "retry": { "maxAttempts": 1, "delayMs": 3000 },
+  "params": {
+    "target_lang": "zh-CN",
+    "store_name": "",
+    "_comment": "target_lang 可选: zh-CN, en-US, ja, ko；store_name 为空时使用第一个店铺"
+  },
+  "steps": [
+    {
+      "id": "list_stores",
+      "tool": "list_stores",
+      "save": "stores",
+      "on_fail": { "action": "abort", "context": "bridge_down" }
+    },
+    {
+      "id": "open_store",
+      "tool": "open_store",
+      "store_selector": "first",
+      "save": "store",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "nav_home",
+      "tool": "visit_page",
+      "args": {
+        "url": "https://sellercentral.amazon.com/",
+        "waitUntil": "domcontentloaded",
+        "timeoutMs": 30000
+      },
+      "on_fail": { "action": "retry", "delayMs": 5000, "maxAttempts": 2, "context": "nav_failed" }
+    },
+    {
+      "id": "detect_language",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/detect_language.js",
+        "returnByValue": true
+      },
+      "save": "lang_info",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "check_need_switch",
+      "action": "branch",
+      "cases": [
+        {
+          "condition": { "type": "eq", "left": "${lang_info.lang}", "right": "${params.target_lang}" },
+          "goto": "report_no_switch"
+        }
+      ],
+      "default": "click_settings"
+    },
+    {
+      "id": "report_no_switch",
+      "action": "print",
+      "message": "当前语言已是目标语言 ${params.target_lang}，无需切换",
+      "goto": "close_store"
+    },
+    {
+      "id": "click_settings",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/click_settings_button.js",
+        "returnByValue": true
+      },
+      "save": "settings_click",
+      "on_fail": { "action": "abort", "context": "element_not_found" },
+      "validate": { "contains": "clicked" }
+    },
+    {
+      "id": "wait_settings_menu",
+      "action": "sleep",
+      "seconds": 1
+    },
+    {
+      "id": "click_target_lang",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/click_target_language.js",
+        "returnByValue": true
+      },
+      "save": "lang_switch_result",
+      "on_fail": { "action": "retry", "delayMs": 2000, "maxAttempts": 2, "context": "element_not_found" },
+      "validate": { "path": "clicked", "not_empty": true }
+    },
+    {
+      "id": "wait_page_reload",
+      "action": "sleep",
+      "seconds": 3
+    },
+    {
+      "id": "verify_language",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/detect_language.js",
+        "returnByValue": true
+      },
+      "save": "verified_lang",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "assert_switched",
+      "action": "assert",
+      "value": "${verified_lang.lang}",
+      "expected": "${params.target_lang}",
+      "check": "eq",
+      "on_fail": { "action": "heal", "context": "element_not_found" }
+    },
+    {
+      "id": "close_store",
+      "tool": "close_store",
+      "on_fail": { "action": "skip" }
+    }
+  ],
+  "on_success": { "close_store": false },
+  "on_fail_final": { "notify": true, "close_store": true },
+  "heal": {
+    "hints": "语言切换入口是顶部导航 aria-label=设置/Settings 的按钮，点击后出现 .ngstrim-dropdown-container 下拉，语言链接文本见 extracts/click_target_language.js 中的 langMap。切换后页面会刷新，documentElement.lang 应等于目标语言代码。如果下拉结构改版，用 query_elements 探索新的容器选择器。"
+  }
+}

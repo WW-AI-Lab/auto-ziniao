@@ -1,0 +1,62 @@
+{
+  "name": "@ww-ai-lab/auto-ziniao",
+  "version": "0.1.1",
+  "description": "CLI for reusable ZClaw-based Ziniao store-operation flows.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/ww-ai-lab/auto-ziniao/issues"
+  },
+  "homepage": "https://github.com/ww-ai-lab/auto-ziniao#readme",
+  "keywords": [
+    "auto-ziniao",
+    "zclaw",
+    "automation",
+    "flow",
+    "cli"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "auto-ziniao": "dist/bin/auto-ziniao.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "!dist/**/*.test.*",
+    "!dist/bin/ziniao.*",
+    "package.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "auto-ziniao": "node dist/bin/auto-ziniao.js"
+  },
+  "dependencies": {
+    "@ww-ai-lab/auto-ziniao-core": "workspace:*",
+    "@ww-ai-lab/auto-ziniao-flow-engine": "workspace:*",
+    "@ww-ai-lab/auto-ziniao-schemas": "workspace:*",
+    "@ww-ai-lab/auto-ziniao-self-heal": "workspace:*",
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

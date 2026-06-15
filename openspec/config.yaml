@@ -1,0 +1,16 @@
+schema: spec-driven
+
+context: |
+  语言：中文（简体）
+  OpenSpec 产出物默认使用简体中文撰写。
+  命令、路径、代码标识符、API 名称、JSON/YAML key 保持英文。
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

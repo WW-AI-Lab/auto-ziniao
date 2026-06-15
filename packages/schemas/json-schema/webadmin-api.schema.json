@@ -1,0 +1,2594 @@
+{
+  "$ref": "#/definitions/WebAdminApi",
+  "definitions": {
+    "WebAdminApi": {
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {}
+            },
+            "trigger": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "interval"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "minutes"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "daily"
+                        },
+                        "time": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "time"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "cron"
+                        },
+                        "expr": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "expr"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "next_run_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "latest_run": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "schedule_id": {
+                      "type": "string"
+                    },
+                    "run_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fired_at": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "timeout",
+                            "skipped"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "exit_code": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "flow_status": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "heal_summary": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not_triggered",
+                                    "triggered",
+                                    "skipped",
+                                    "success",
+                                    "failed",
+                                    "timeout",
+                                    "dry_run",
+                                    "disabled"
+                                  ]
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "heal_id": {
+                              "type": "string"
+                            },
+                            "error_type": {
+                              "type": "string"
+                            },
+                            "agent": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "cli_exit_code": {
+                              "type": "integer"
+                            },
+                            "cli_stderr": {
+                              "type": "string"
+                            },
+                            "timed_out": {
+                              "type": "boolean"
+                            },
+                            "command_missing": {
+                              "type": "boolean"
+                            },
+                            "prompt_path": {
+                              "type": "string"
+                            },
+                            "heal_log_path": {
+                              "type": "string"
+                            },
+                            "context_available": {
+                              "type": "boolean"
+                            },
+                            "prompt_available": {
+                              "type": "boolean"
+                            },
+                            "detail_url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": true
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "schedule_id",
+                    "fired_at",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "flow_id",
+            "trigger",
+            "enabled",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": true
+        },
+        "scheduleRun": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "schedule_id": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fired_at": {
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "flow_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "schedule_id",
+            "fired_at",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "chatSession": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string"
+            },
+            "busy": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "agent",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": true
+        },
+        "chatMessage": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "role": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "content": {
+              "type": "string",
+              "default": ""
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "done",
+                    "failed"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "done"
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "extras": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "reasoning": {
+                      "type": "string"
+                    },
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "running",
+                                  "success",
+                                  "failed",
+                                  "skipped"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "args_summary": {
+                            "type": "string"
+                          },
+                          "result_summary": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    "a2ui": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "text",
+                                  "table",
+                                  "description",
+                                  "steps",
+                                  "json",
+                                  "alert"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "level": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "info",
+                                  "success",
+                                  "warning",
+                                  "error"
+                                ]
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "columns": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "rows": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {}
+                          },
+                          "data": {},
+                          "props": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id",
+            "role",
+            "created_at"
+          ],
+          "additionalProperties": true
+        },
+        "flowSummary": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "schedule": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "file": {
+              "type": "string"
+            },
+            "last_run": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": true
+        },
+        "flowDetail": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "extracts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "exists": {
+                    "type": "boolean"
+                  },
+                  "content": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "exists"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "last_run": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "createFlowRequest": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": true
+        },
+        "createFlowResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "created": {
+              "type": "boolean",
+              "default": true
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "saveExtractRequest": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "extractDetail": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "path",
+            "exists",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "flowTemplateResponse": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "healSummary": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "not_triggered",
+                    "triggered",
+                    "skipped",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "dry_run",
+                    "disabled"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "heal_id": {
+              "type": "string"
+            },
+            "error_type": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            },
+            "cli_exit_code": {
+              "type": "integer"
+            },
+            "cli_stderr": {
+              "type": "string"
+            },
+            "timed_out": {
+              "type": "boolean"
+            },
+            "command_missing": {
+              "type": "boolean"
+            },
+            "prompt_path": {
+              "type": "string"
+            },
+            "heal_log_path": {
+              "type": "string"
+            },
+            "context_available": {
+              "type": "boolean"
+            },
+            "prompt_available": {
+              "type": "boolean"
+            },
+            "detail_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "outputRef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "dir"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "available": {
+              "type": "boolean",
+              "default": true
+            },
+            "preview_url": {
+              "type": "string"
+            },
+            "download_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "path"
+          ],
+          "additionalProperties": true
+        },
+        "flowRunHistoryItem": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "manual",
+                    "schedule",
+                    "history"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "history"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "schedule_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "schedule_run_id": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error",
+                    "exhausted"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failed_step": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "step_id": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "args": {},
+                    "heal_context": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "data_summary": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "output_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "available": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "preview_url": {
+                    "type": "string"
+                  },
+                  "download_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail_available": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "run_id",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "flowRunDetail": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "manual",
+                    "schedule",
+                    "history"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "history"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "schedule_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "schedule_run_id": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error",
+                    "exhausted"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failed_step": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "step_id": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "args": {},
+                    "heal_context": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "data_summary": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "output_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "available": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "preview_url": {
+                    "type": "string"
+                  },
+                  "download_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail_available": {
+              "type": "boolean",
+              "default": true
+            },
+            "result": {},
+            "heal_result": {},
+            "heal_events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "default": []
+            },
+            "heal_context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "heal_prompt": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "available": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "log_entry": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "run_id",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "manualRunStatus": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "output": {
+              "type": "string"
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "heal": {},
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "cli_exit_code": {
+                      "type": "integer"
+                    },
+                    "cli_stderr": {
+                      "type": "string"
+                    },
+                    "timed_out": {
+                      "type": "boolean"
+                    },
+                    "command_missing": {
+                      "type": "boolean"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "token",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "outputFileEntry": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mtime": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "dir"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "preview": {}
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": true
+        },
+        "outputDirectory": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "dirs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "mtime": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "preview": {}
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "mtime": {
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "preview": {}
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": true
+        },
+        "outputPreview": {
+          "type": "object",
+          "properties": {
+            "too_large": {
+              "type": "boolean"
+            },
+            "binary": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "size"
+          ],
+          "additionalProperties": true
+        },
+        "healEntry": {
+          "type": "object",
+          "properties": {
+            "heal_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "event": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "error_type": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "cli_exit_code": {
+              "type": "integer"
+            },
+            "cli_stderr": {
+              "type": "string"
+            },
+            "timed_out": {
+              "type": "boolean"
+            },
+            "command_missing": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "healDetail": {
+          "type": "object",
+          "properties": {
+            "heal_id": {
+              "type": "string"
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "heal_id",
+            "context",
+            "prompt"
+          ],
+          "additionalProperties": true
+        },
+        "webAdminStats": {
+          "type": "object",
+          "properties": {
+            "runs_total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_success": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_error": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "heals_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "flows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flow_id": {
+                    "type": "string"
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "success": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "success_rate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "last_run": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "last_status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "heal_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "flow_id",
+                  "total",
+                  "success",
+                  "success_rate"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "schedules": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "enabled": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "total",
+                "enabled"
+              ],
+              "additionalProperties": true
+            },
+            "chat_sessions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "required": [
+            "runs_total",
+            "runs_success",
+            "runs_failed",
+            "schedules"
+          ],
+          "additionalProperties": true
+        },
+        "chatAgentInfo": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "timeout_sec": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "timeout_sec"
+          ],
+          "additionalProperties": true
+        },
+        "chatSseEvent": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "accepted"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "session_id"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "start"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "delta"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string",
+                      "default": ""
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "reasoning_delta"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string",
+                      "default": ""
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "tool_call"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "running",
+                            "success",
+                            "failed",
+                            "skipped"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "args_summary": {
+                      "type": "string"
+                    },
+                    "result_summary": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "name"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "a2ui"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "block": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "text",
+                                "table",
+                                "description",
+                                "steps",
+                                "json",
+                                "alert"
+                              ]
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "info",
+                                "success",
+                                "warning",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "columns": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {}
+                        },
+                        "data": {},
+                        "props": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "block"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "done"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "content": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "error"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "heartbeat"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            }
+          ]
+        },
+        "apiErrorResponse": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "details": {}
+              },
+              "required": [
+                "code",
+                "message"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schedule",
+        "scheduleRun",
+        "chatSession",
+        "chatMessage",
+        "flowSummary",
+        "flowDetail",
+        "createFlowRequest",
+        "createFlowResponse",
+        "saveExtractRequest",
+        "extractDetail",
+        "flowTemplateResponse",
+        "healSummary",
+        "outputRef",
+        "flowRunHistoryItem",
+        "flowRunDetail",
+        "manualRunStatus",
+        "outputFileEntry",
+        "outputDirectory",
+        "outputPreview",
+        "healEntry",
+        "healDetail",
+        "webAdminStats",
+        "chatAgentInfo",
+        "chatSseEvent",
+        "apiErrorResponse"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

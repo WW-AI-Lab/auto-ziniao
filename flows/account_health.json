@@ -1,0 +1,86 @@
+{
+  "id": "account_health",
+  "name": "账户健康检查",
+  "version": 2,
+  "enabled": true,
+  "schedule": "0 9 * * *",
+  "description": "检查 Amazon 账户状况评级、政策合规性、各指标状态",
+  "retry": { "maxAttempts": 2, "delayMs": 5000 },
+  "params": {
+    "store_name": "",
+    "_comment": "store_name 为空时自动使用店铺列表中的第一个店铺"
+  },
+  "steps": [
+    {
+      "id": "list_stores",
+      "tool": "list_stores",
+      "save": "stores",
+      "on_fail": { "action": "abort", "context": "bridge_down" }
+    },
+    {
+      "id": "open_store",
+      "tool": "open_store",
+      "store_selector": "first",
+      "save": "store",
+      "on_fail": { "action": "abort" }
+    },
+    {
+      "id": "nav_home",
+      "tool": "visit_page",
+      "args": {
+        "url": "https://sellercentral.amazon.com/",
+        "waitUntil": "domcontentloaded",
+        "timeoutMs": 30000
+      },
+      "on_fail": { "action": "retry", "delayMs": 5000, "maxAttempts": 2, "context": "nav_failed" }
+    },
+    {
+      "id": "wait_page_load",
+      "action": "sleep",
+      "seconds": 2
+    },
+    {
+      "id": "nav_health",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/nav_account_health_menu.js",
+        "returnByValue": true
+      },
+      "save": "nav_result",
+      "on_fail": { "action": "retry", "delayMs": 3000, "maxAttempts": 2, "context": "nav_failed" },
+      "validate": { "contains": "navigating" }
+    },
+    {
+      "id": "wait_health_page",
+      "action": "sleep",
+      "seconds": 3
+    },
+    {
+      "id": "extract_health_data",
+      "tool": "execute_script",
+      "args": {
+        "script": "@extracts/extract_account_health.js",
+        "returnByValue": true
+      },
+      "save": "health_data",
+      "on_fail": { "action": "heal", "context": "extract_failed" },
+      "validate": { "not_empty": true, "require_fields": ["accountHealthRating"] }
+    },
+    {
+      "id": "save_health_report",
+      "action": "save_json",
+      "data": "${health_data}",
+      "filename": "account_health_${date}.json"
+    },
+    {
+      "id": "close_store",
+      "tool": "close_store",
+      "on_fail": { "action": "skip" }
+    }
+  ],
+  "on_success": { "close_store": false },
+  "on_fail_final": { "notify": true, "close_store": true },
+  "heal": {
+    "hints": "账户状况页入口是首页左侧菜单「绩效 → 管理账户状况」（a.ngstrim-nav-menu-l2）。页面可能是中文或英文，提取脚本 extracts/extract_account_health.js 的正则需要兼容两种语言。评级数字在 0-1000 之间，页面结构为 kat-* 组件而非传统 table。"
+  }
+}
