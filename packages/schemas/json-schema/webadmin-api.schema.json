@@ -121,6 +121,12 @@
                     "schedule_id": {
                       "type": "string"
                     },
+                    "run_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "fired_at": {
                       "type": "string"
                     },
@@ -157,6 +163,78 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "flow_status": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "heal_summary": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not_triggered",
+                                    "triggered",
+                                    "skipped",
+                                    "success",
+                                    "failed",
+                                    "timeout",
+                                    "dry_run",
+                                    "disabled"
+                                  ]
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "heal_id": {
+                              "type": "string"
+                            },
+                            "error_type": {
+                              "type": "string"
+                            },
+                            "agent": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "error": {
+                              "type": "string"
+                            },
+                            "prompt_path": {
+                              "type": "string"
+                            },
+                            "heal_log_path": {
+                              "type": "string"
+                            },
+                            "context_available": {
+                              "type": "boolean"
+                            },
+                            "prompt_available": {
+                              "type": "boolean"
+                            },
+                            "detail_url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": true
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -191,6 +269,12 @@
             },
             "schedule_id": {
               "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "fired_at": {
               "type": "string"
@@ -227,6 +311,78 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "flow_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -572,10 +728,828 @@
           ],
           "additionalProperties": true
         },
+        "createFlowRequest": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": true
+        },
+        "createFlowResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "created": {
+              "type": "boolean",
+              "default": true
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "saveExtractRequest": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "extractDetail": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "content": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "path",
+            "exists",
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "flowTemplateResponse": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "additionalProperties": true
+        },
+        "healSummary": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "not_triggered",
+                    "triggered",
+                    "skipped",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "dry_run",
+                    "disabled"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "heal_id": {
+              "type": "string"
+            },
+            "error_type": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            },
+            "prompt_path": {
+              "type": "string"
+            },
+            "heal_log_path": {
+              "type": "string"
+            },
+            "context_available": {
+              "type": "boolean"
+            },
+            "prompt_available": {
+              "type": "boolean"
+            },
+            "detail_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "outputRef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "file",
+                    "dir"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "available": {
+              "type": "boolean",
+              "default": true
+            },
+            "preview_url": {
+              "type": "string"
+            },
+            "download_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "path"
+          ],
+          "additionalProperties": true
+        },
+        "flowRunHistoryItem": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "manual",
+                    "schedule",
+                    "history"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "history"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "schedule_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "schedule_run_id": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error",
+                    "exhausted"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failed_step": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "step_id": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "args": {},
+                    "heal_context": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "data_summary": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "output_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "available": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "preview_url": {
+                    "type": "string"
+                  },
+                  "download_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail_available": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "run_id",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
+        "flowRunDetail": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "manual",
+                    "schedule",
+                    "history"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "history"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "schedule_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "schedule_run_id": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "running",
+                    "success",
+                    "failed",
+                    "timeout",
+                    "skipped",
+                    "error",
+                    "exhausted"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "started_at": {
+              "type": "string"
+            },
+            "finished_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "duration_ms": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failed_step": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "step_id": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "args": {},
+                    "heal_context": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "data_summary": {
+              "type": "object",
+              "additionalProperties": {},
+              "default": {}
+            },
+            "output_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "file",
+                          "dir"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "available": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "preview_url": {
+                    "type": "string"
+                  },
+                  "download_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail_available": {
+              "type": "boolean",
+              "default": true
+            },
+            "result": {},
+            "heal_result": {},
+            "heal_events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "default": []
+            },
+            "heal_context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "heal_prompt": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "available": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "log_entry": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "run_id",
+            "flow_id",
+            "status"
+          ],
+          "additionalProperties": true
+        },
         "manualRunStatus": {
           "type": "object",
           "properties": {
             "token": {
+              "type": "string"
+            },
+            "run_id": {
               "type": "string"
             },
             "flow_id": {
@@ -634,7 +1608,73 @@
                 "null"
               ]
             },
-            "heal": {}
+            "heal": {},
+            "heal_summary": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "not_triggered",
+                            "triggered",
+                            "skipped",
+                            "success",
+                            "failed",
+                            "timeout",
+                            "dry_run",
+                            "disabled"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "heal_id": {
+                      "type": "string"
+                    },
+                    "error_type": {
+                      "type": "string"
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "prompt_path": {
+                      "type": "string"
+                    },
+                    "heal_log_path": {
+                      "type": "string"
+                    },
+                    "context_available": {
+                      "type": "boolean"
+                    },
+                    "prompt_available": {
+                      "type": "boolean"
+                    },
+                    "detail_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
           "required": [
             "token",
@@ -821,6 +1861,9 @@
               "type": "string"
             },
             "event": {
+              "type": "string"
+            },
+            "status": {
               "type": "string"
             },
             "flow_id": {
@@ -1211,6 +2254,15 @@
         "chatMessage",
         "flowSummary",
         "flowDetail",
+        "createFlowRequest",
+        "createFlowResponse",
+        "saveExtractRequest",
+        "extractDetail",
+        "flowTemplateResponse",
+        "healSummary",
+        "outputRef",
+        "flowRunHistoryItem",
+        "flowRunDetail",
         "manualRunStatus",
         "outputFileEntry",
         "outputDirectory",

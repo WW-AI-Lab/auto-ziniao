@@ -15,6 +15,7 @@ import { createScheduler } from "./scheduler.js";
 import { resolveSafePath, isDirectory, isFile, AllowedRoot } from "./security.js";
 import { createStorage, Storage } from "./storage.js";
 import { computeNextRun, validateTrigger, TriggerError } from "./triggers.js";
+import type { CreateFlowRequest, SaveExtractRequest } from "@ziniao/schemas";
 
 export type CreateAppOptions = {
   config?: Partial<WebAdminConfig>;
@@ -27,18 +28,20 @@ export type CreateAppOptions = {
 export async function createApp(options: CreateAppOptions = {}): Promise<FastifyInstance> {
   const config = createConfig(options.config);
   const storage = options.storage ?? createStorage(path.join(config.dataRoot, "webadmin.db"));
+  const agentRunner = options.agentRunner ?? createCommandAgentRunner();
   const runner =
     options.runner ??
     createFlowRunner({
       repoRoot: config.repoRoot,
       dataRoot: config.dataRoot,
+      storage,
+      agentRunner,
       timeoutMs: config.flowTimeoutMs
     });
   const scheduler = createScheduler({ storage, runner });
   const app = Fastify({ logger: false });
   const roots = allowedRoots(config);
   const busySessions = new Set<string>();
-  const agentRunner = options.agentRunner ?? createCommandAgentRunner();
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ApiError) {
@@ -65,7 +68,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
     scheduler.recomputeAll();
   }
 
-  registerFlowRoutes(app, { config, roots, runner });
+  registerFlowRoutes(app, { config, roots, runner, storage });
   registerMonitoringRoutes(app, { config, roots, storage });
   registerScheduleRoutes(app, { config, storage, scheduler });
   registerChatRoutes(app, { config, storage, busySessions, agentRunner });
@@ -82,9 +85,29 @@ export async function startServer(options: CreateAppOptions = {}) {
 
 function registerFlowRoutes(
   app: FastifyInstance,
-  deps: { config: WebAdminConfig; roots: Record<AllowedRoot, string>; runner: ReturnType<typeof createFlowRunner> }
+  deps: { config: WebAdminConfig; roots: Record<AllowedRoot, string>; runner: ReturnType<typeof createFlowRunner>; storage: Storage }
 ) {
   app.get("/api/flows", async () => ({ items: await listFlows(deps.config, deps.runner) }));
+
+  app.get("/api/flows/template", async () => ({ content: flowTemplateContent("__FLOW_ID__", "__FLOW_NAME__") }));
+
+  app.post<{ Body: CreateFlowRequest }>("/api/flows", async (request) => {
+    const body = request.body ?? {};
+    const flowId = validateFlowId(body.id);
+    const file = flowFile(deps.config.repoRoot, flowId);
+    if (existsSync(file)) throw conflict(`流程已存在: ${flowId}`);
+    const content = body.content ?? flowTemplateContent(flowId, body.name?.trim() || flowId);
+    const parsed = validateFlowContent(deps.config.repoRoot, flowId, content);
+    ensureDir(path.dirname(file));
+    writeJsonFile(file, parsed);
+    return {
+      id: flowId,
+      name: String(parsed.name ?? flowId),
+      content: `${JSON.stringify(parsed, null, 2)}\n`,
+      created: true,
+      warnings: []
+    };
+  });
 
   app.get<{ Params: { flowId: string } }>("/api/flows/:flowId", async (request) => {
     const flowId = request.params.flowId;
@@ -99,6 +122,11 @@ function registerFlowRoutes(
       last_run: await lastRunOf(deps.config.dataRoot, flowId),
       running: deps.runner.isRunning(flowId)
     };
+  });
+
+  app.get<{ Params: { flowId: string }; Querystring: RunQuery }>("/api/flows/:flowId/runs", async (request) => {
+    validateFlowId(request.params.flowId);
+    return flowRunHistory(deps, { ...request.query, flow_id: request.params.flowId });
   });
 
   app.post<{ Params: { flowId: string }; Body: { content?: string } }>("/api/flows/:flowId/validate", async (request) => {
@@ -127,8 +155,37 @@ function registerFlowRoutes(
 
   app.get<{ Params: { token: string } }>("/api/flow-runs/:token", async (request) => {
     const entry = deps.runner.get(request.params.token);
-    if (!entry) throw notFound(`运行记录不存在: ${request.params.token}`);
-    return entry;
+    if (entry) return entry;
+    const persisted = deps.storage.getFlowRunByToken(request.params.token);
+    if (!persisted) throw notFound(`运行记录不存在: ${request.params.token}`);
+    return toRunHistoryItem(persisted);
+  });
+
+  app.get<{ Params: { "*": string } }>("/api/extracts/*", async (request) => {
+    const name = extractNameFromParams(request.params);
+    const file = resolveExtractFile(deps.roots, name);
+    const exists = isFile(file);
+    return {
+      name,
+      path: `extracts/${name}`,
+      exists,
+      content: exists ? readFileSync(file, "utf8") : null
+    };
+  });
+
+  app.put<{ Params: { "*": string }; Body: SaveExtractRequest }>("/api/extracts/*", async (request) => {
+    const name = extractNameFromParams(request.params);
+    const content = request.body?.content;
+    if (typeof content !== "string") throw badRequest("content 不能为空");
+    const file = resolveExtractFile(deps.roots, name);
+    ensureDir(path.dirname(file));
+    writeFileSync(file, content, "utf8");
+    return {
+      name,
+      path: `extracts/${name}`,
+      exists: true,
+      content
+    };
   });
 }
 
@@ -136,11 +193,14 @@ function registerMonitoringRoutes(
   app: FastifyInstance,
   deps: { config: WebAdminConfig; roots: Record<AllowedRoot, string>; storage: Storage }
 ) {
-  app.get<{ Querystring: { flow_id?: string; limit?: string; offset?: string } }>("/api/runs", async (request) => {
-    const entries = await readJsonlSafe<Record<string, unknown>>(path.join(deps.config.dataRoot, "logs", "runs.jsonl"));
-    const filtered = request.query.flow_id ? entries.filter((entry) => entry.flow_id === request.query.flow_id) : entries;
-    const items = filtered.reverse().slice(Number(request.query.offset ?? 0), Number(request.query.offset ?? 0) + Number(request.query.limit ?? 50));
-    return { total: filtered.length, items };
+  app.get<{ Querystring: RunQuery }>("/api/runs", async (request) => {
+    return flowRunHistory(deps, request.query);
+  });
+
+  app.get<{ Params: { runId: string } }>("/api/runs/:runId", async (request) => {
+    const detail = await flowRunDetail(deps, request.params.runId);
+    if (!detail) throw notFound(`运行记录不存在: ${request.params.runId}`);
+    return detail;
   });
 
   app.get<{ Querystring: { limit?: string; offset?: string } }>("/api/heals", async (request) => {
@@ -362,8 +422,18 @@ function registerScheduleRoutes(
 
   app.get<{ Params: { sid: string }; Querystring: { limit?: string; offset?: string } }>("/api/schedules/:sid/runs", async (request) => {
     if (!deps.storage.getSchedule(request.params.sid)) throw notFound(`任务不存在: ${request.params.sid}`);
+    const rows = deps.storage.listScheduleRuns(request.params.sid, Number(request.query.limit ?? 20), Number(request.query.offset ?? 0));
     return {
-      items: deps.storage.listScheduleRuns(request.params.sid, Number(request.query.limit ?? 20), Number(request.query.offset ?? 0))
+      items: rows.map((row) => {
+        const runId = typeof row.run_id === "string" ? row.run_id : null;
+        const run = runId ? deps.storage.getFlowRun(runId) : null;
+        return {
+          ...row,
+          run_id: runId,
+          flow_status: run?.status ?? row.status,
+          heal_summary: run?.heal_summary ?? null
+        };
+      })
     };
   });
 }
@@ -487,6 +557,198 @@ async function registerStaticRoutes(app: FastifyInstance, config: WebAdminConfig
   }
 }
 
+type RunQuery = {
+  flow_id?: string;
+  schedule_id?: string;
+  source?: string;
+  status?: string;
+  limit?: string;
+  offset?: string;
+};
+
+async function flowRunHistory(
+  deps: { config: WebAdminConfig; roots: Record<AllowedRoot, string>; storage: Storage },
+  query: RunQuery
+) {
+  const limit = clampQueryInt(query.limit, 50, 1, 200);
+  const offset = clampQueryInt(query.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+  const filters = {
+    flow_id: query.flow_id,
+    schedule_id: query.schedule_id,
+    source: query.source,
+    status: query.status,
+    limit,
+    offset
+  };
+  const indexed = deps.storage.listFlowRuns(filters).map(toRunHistoryItem);
+  const indexedTotal = deps.storage.countFlowRuns(filters);
+  const includeHistory = !query.schedule_id && (!query.source || query.source === "history");
+  if (!includeHistory) {
+    return { total: indexedTotal, limit, offset, items: indexed };
+  }
+  const historical = await historicalRunItems(deps.config.dataRoot, query.flow_id, query.status);
+  const combined = [...indexed, ...historical]
+    .sort((a, b) => runSortKey(b).localeCompare(runSortKey(a)));
+  return {
+    total: indexedTotal + historical.length,
+    limit,
+    offset,
+    items: combined.slice(offset, offset + limit)
+  };
+}
+
+async function flowRunDetail(
+  deps: { config: WebAdminConfig; roots: Record<AllowedRoot, string>; storage: Storage },
+  runId: string
+) {
+  const indexed = deps.storage.getFlowRun(runId);
+  if (indexed) {
+    const item = toRunHistoryItem(indexed);
+    const healId = healIdFrom(item.heal_summary) ?? healIdFrom(indexed.heal_result);
+    const healEvents = await matchingHealEvents(deps.config.repoRoot, {
+      healId,
+      flowId: indexed.flow_id
+    });
+    const healFiles: Partial<HealFileStatus> = healId ? healFileStatus(deps.config.dataRoot, healId) : {};
+    return {
+      ...item,
+      result: indexed.result,
+      heal_result: indexed.heal_result,
+      heal_events: healEvents,
+      heal_context: healFiles.context_available && healFiles.context_file ? readJsonFile(healFiles.context_file) : null,
+      heal_prompt: healFiles.prompt_path
+        ? { path: healFiles.prompt_path, available: Boolean(healFiles.prompt_available) }
+        : null,
+      heal_summary: {
+        ...(isRecord(item.heal_summary) ? item.heal_summary : {}),
+        ...(healFiles.context_available !== undefined ? { context_available: healFiles.context_available } : {}),
+        ...(healFiles.prompt_available !== undefined ? { prompt_available: healFiles.prompt_available } : {})
+      },
+      output_refs: outputRefsWithAvailability(deps.roots, item.output_refs),
+      log_entry: await latestLogEntry(deps.config.dataRoot, indexed.flow_id)
+    };
+  }
+  if (runId.startsWith("history_")) {
+    const historical = (await historicalRunItems(deps.config.dataRoot)).find((item) => item.run_id === runId);
+    return historical ? { ...historical, heal_events: [], heal_context: null, heal_prompt: null, log_entry: historical } : null;
+  }
+  return null;
+}
+
+function toRunHistoryItem(run: ReturnType<Storage["getFlowRun"]>) {
+  if (!run) throw new Error("run is required");
+  return {
+    run_id: run.run_id,
+    token: run.token ?? undefined,
+    source: run.source,
+    flow_id: run.flow_id,
+    schedule_id: run.schedule_id ?? null,
+    schedule_run_id: run.schedule_run_id ?? null,
+    params: run.params ?? {},
+    status: run.status,
+    started_at: run.started_at,
+    finished_at: run.finished_at ?? null,
+    duration_ms: run.duration_ms ?? null,
+    exit_code: run.exit_code ?? null,
+    error: run.error ?? null,
+    failed_step: run.failed_step ?? null,
+    data_summary: run.data_summary ?? {},
+    output_refs: run.output_refs ?? [],
+    heal_summary: run.heal_summary ?? null,
+    detail_available: true
+  };
+}
+
+function runSortKey(item: { started_at?: string | null; timestamp?: string | null }) {
+  return String(item.started_at ?? item.timestamp ?? "");
+}
+
+async function historicalRunItems(dataRoot: string, flowId?: string, status?: string) {
+  const entries = await readJsonlSafe<Record<string, unknown>>(path.join(dataRoot, "logs", "runs.jsonl"));
+  return entries
+    .filter((entry) => !flowId || entry.flow_id === flowId)
+    .filter((entry) => !status || entry.status === status)
+    .map((entry, idx) => {
+      const idBase = `${entry.flow_id ?? "unknown"}_${entry.timestamp ?? idx}`;
+      return {
+        run_id: `history_${String(idBase).replace(/[^A-Za-z0-9_-]/g, "_")}`,
+        source: "history",
+        flow_id: String(entry.flow_id ?? "unknown"),
+        params: isRecord(entry.params) ? entry.params : {},
+        status: String(entry.status ?? "unknown"),
+        started_at: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
+        timestamp: typeof entry.timestamp === "string" ? entry.timestamp : undefined,
+        duration_ms: typeof entry.duration_ms === "number" ? entry.duration_ms : null,
+        error: typeof entry.error === "string" ? entry.error : null,
+        failed_step: null,
+        data_summary: isRecord(entry.data_summary) ? entry.data_summary : {},
+        output_refs: [],
+        heal_summary: null,
+        detail_available: false
+      };
+    });
+}
+
+async function latestLogEntry(dataRoot: string, flowId: string) {
+  const entries = await readJsonlSafe<Record<string, unknown>>(path.join(dataRoot, "logs", "runs.jsonl"));
+  return [...entries].reverse().find((entry) => entry.flow_id === flowId) ?? null;
+}
+
+async function matchingHealEvents(repoRoot: string, input: { healId?: string | null; flowId?: string }) {
+  const entries = await readJsonlSafe<Record<string, unknown>>(path.join(repoRoot, "learnings", "heals.jsonl"));
+  return entries.filter((entry) =>
+    (input.healId && entry.heal_id === input.healId) || (!input.healId && input.flowId && entry.flow_id === input.flowId)
+  );
+}
+
+type HealFileStatus = {
+  context_file?: string;
+  context_available: boolean;
+  prompt_path?: string;
+  prompt_available: boolean;
+};
+
+function healFileStatus(dataRoot: string, healId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(healId)) {
+    return { context_available: false, prompt_available: false };
+  }
+  const contextFile = path.join(dataRoot, "logs", "heals", `${healId}.json`);
+  const promptA = path.join(dataRoot, "logs", "heals", `${healId}_prompt.md`);
+  const promptB = path.join(dataRoot, "logs", "heals", `${healId}.md`);
+  const prompt = existsSync(promptA) ? promptA : existsSync(promptB) ? promptB : null;
+  return {
+    context_file: contextFile,
+    context_available: existsSync(contextFile),
+    prompt_path: prompt ?? undefined,
+    prompt_available: Boolean(prompt)
+  };
+}
+
+function outputRefsWithAvailability(roots: Record<AllowedRoot, string>, refs: unknown[]) {
+  return refs.map((ref) => {
+    if (!isRecord(ref)) return ref;
+    const rawPath = typeof ref.path === "string" ? ref.path : "";
+    let available = false;
+    try {
+      const resolved = resolveSafePath(roots, "output", rawPath);
+      available = isFile(resolved) || isDirectory(resolved);
+    } catch {
+      available = false;
+    }
+    return { ...ref, available };
+  });
+}
+
+function healIdFrom(value: unknown) {
+  return isRecord(value) && typeof value.heal_id === "string" ? value.heal_id : null;
+}
+
+function clampQueryInt(value: string | undefined, fallback: number, min: number, max: number) {
+  const parsed = Number(value ?? NaN);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+
 async function listFlows(config: WebAdminConfig, runner: ReturnType<typeof createFlowRunner>) {
   const flowsDir = path.join(config.repoRoot, "flows");
   if (!existsSync(flowsDir)) return [];
@@ -534,6 +796,34 @@ function validateFlowContent(repoRoot: string, flowId: string, content?: string)
   return parsed;
 }
 
+function flowTemplateContent(flowId: string, name: string) {
+  return `${JSON.stringify(
+    {
+      id: flowId,
+      name,
+      version: 1,
+      enabled: true,
+      schedule: "",
+      description: "",
+      params: {
+        store_name: ""
+      },
+      steps: [
+        {
+          id: "start",
+          action: "print",
+          message: "TODO: replace with verified bridge steps"
+        }
+      ],
+      heal: {
+        hints: "TODO: record page entry, selectors, structure and known pitfalls from the verified session"
+      }
+    },
+    null,
+    2
+  )}\n`;
+}
+
 function backupFlow(repoRoot: string, flowId: string) {
   const file = flowFile(repoRoot, flowId);
   const dir = path.join(repoRoot, "flows", ".backup");
@@ -543,8 +833,29 @@ function backupFlow(repoRoot: string, flowId: string) {
 }
 
 function flowFile(repoRoot: string, flowId: string) {
-  if (!/^[A-Za-z0-9_-]+$/.test(flowId)) throw notFound(`流程不存在: ${flowId}`);
+  validateFlowId(flowId);
   return path.join(repoRoot, "flows", `${flowId}.json`);
+}
+
+function validateFlowId(flowId: unknown) {
+  if (typeof flowId !== "string" || !/^[A-Za-z0-9_-]+$/.test(flowId)) {
+    throw badRequest(`非法 flow id: ${String(flowId ?? "")}`);
+  }
+  return flowId;
+}
+
+function extractNameFromParams(params: { "*": string }) {
+  const name = params["*"] ?? "";
+  if (!/^[A-Za-z0-9_.\-/]+$/.test(name) || name.length === 0) {
+    throw badRequest(`非法 extract 名称: ${name}`);
+  }
+  return name;
+}
+
+function resolveExtractFile(roots: Record<AllowedRoot, string>, name: string) {
+  const file = resolveSafePath(roots, "extracts", name);
+  if (isDirectory(file)) throw badRequest(`extract 不能是目录: ${name}`);
+  return file;
 }
 
 function findExtractRefs(repoRoot: string, flow: Record<string, unknown>) {

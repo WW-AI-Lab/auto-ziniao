@@ -1,8 +1,8 @@
 ## Why
 
-当前 flow DSL 已支持 `sleep`、`timeoutMs`、`retry.delayMs` 和 `on_fail.retry.delayMs`，但这些能力都依赖流程作者逐步手写，无法形成统一的操作节奏、风险分级、确认门槛和并发预算。随着 TS 迁移已经完成 `packages/flow-engine`，并且下一阶段正在推进 `packages/self-heal`，现在需要把操作节奏能力设计成迁移后 TS 架构中的共享契约，而不是继续在单个 flow 里散落固定等待。
+当前 flow DSL 已支持 `sleep`、`timeoutMs`、`retry.delayMs` 和 `on_fail.retry.delayMs`，但这些能力都依赖流程作者逐步手写，无法形成统一的操作节奏、风险分级、确认门槛和并发预算。`packages/flow-engine` 已经完成，并且 `packages/self-heal` 也已就位，现在需要把操作节奏能力设计成 flow-engine 中的共享契约，而不是继续在单个 flow 里散落固定等待。
 
-本变更只面向迁移后的 TypeScript 架构：扩展 `packages/schemas` 与 `packages/flow-engine` 的契约和离线运行能力，作为后续 `packages/cli`、`packages/self-heal` 和 WebAdmin 接入的基础。不修改 Python 生产入口，不解决 Python 引擎中的 pacing 行为，也不改变当前 `python3 manager.py ...` 的运行语义。
+本变更面向 TypeScript 架构：扩展 `packages/schemas` 与 `packages/flow-engine` 的契约和离线运行能力，作为后续 `packages/cli`、`packages/self-heal` 和 WebAdmin 接入的基础。
 
 ## What Changes
 
@@ -18,14 +18,14 @@
   - 对 `critical` 步骤执行确认门槛，默认要求显式参数授权。
   - 写入结构化 pacing 事件，便于后续 CLI/WebAdmin 展示。
 - 默认 baseline 继续离线执行，使用 mock tool client、fake sleeper / fixed clock，不调用真实 ZClaw bridge、不启动店铺浏览器、不调用真实 Agent CLI。
-- 文档更新 `docs/03-流程定义规范.md`、`docs/06-TS迁移进度与路线图.md`、`docs/07-操作节奏与流程稳定性规划.md`、README 和 AGENTS 相关 TS 迁移边界。
-- **不做**：不修改 `engine/flow_engine.py`、`engine/zclaw_client.py`、`engine/self_heal.py`、`manager.py`；不迁移 CLI；不迁移 WebAdmin；不新增真实浏览器自动化通道。
+- 文档更新 `docs/03-流程定义规范.md`、`docs/07-操作节奏与流程稳定性规划.md`、README 和 AGENTS 相关边界。
+- **不做**：不修改 `packages/zclaw`；不新增真实浏览器自动化通道。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `typescript-flow-pacing-policy`: 定义迁移后 TS flow engine 的操作节奏策略、风险分级、确认门槛、预算限制、pacing 事件和离线验证要求。
+- `typescript-flow-pacing-policy`: 定义 flow engine 的操作节奏策略、风险分级、确认门槛、预算限制、pacing 事件和离线验证要求。
 
 ### Modified Capabilities
 
@@ -46,5 +46,5 @@
 
 - 代码：`packages/schemas`、`packages/flow-engine`、相关测试、root scripts 或安全扫描（如需）。
 - Specs：新增 `typescript-flow-pacing-policy`；修改 `flow-contract-schemas`、`typescript-flow-engine`、`flow-compatibility-baseline`。
-- 文档：更新 flow DSL、TS 迁移路线图、操作节奏规划、README/AGENTS 中的阶段边界。
-- 运行：不改变 Python 生产入口；不改变现有 flow 默认运行结果，除非用户在 TS flow engine 中显式启用或 flow 声明 pacing/confirm。
+- 文档：更新 flow DSL、操作节奏规划、README/AGENTS 中的边界。
+- 运行：不改变现有 flow 默认运行结果，除非用户在 flow engine 中显式启用或 flow 声明 pacing/confirm。

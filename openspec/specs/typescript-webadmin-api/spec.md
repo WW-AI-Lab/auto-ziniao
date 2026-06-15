@@ -4,15 +4,15 @@
 TBD - created by archiving change add-typescript-webadmin-api. Update Purpose after archive.
 ## Requirements
 ### Requirement: WebAdmin API app package and local server
-系统 SHALL 新增 TypeScript 应用 `apps/webadmin-api`，用于承载 M6 WebAdmin 后端。该应用 MUST 使用 Fastify 作为 HTTP 服务框架，MUST 默认只监听 `127.0.0.1`，MUST NOT 提供绑定 `0.0.0.0` 的配置或命令行开关。M7 后该应用为唯一 WebAdmin 后端（Python WebAdmin 已移除）。
+系统 SHALL 新增 TypeScript 应用 `apps/webadmin-api`，用于承载 WebAdmin 后端。该应用 MUST 使用 Fastify 作为 HTTP 服务框架，MUST 默认只监听 `127.0.0.1`，MUST NOT 提供绑定 `0.0.0.0` 的配置或命令行开关。该应用为唯一 WebAdmin 后端。
 
 #### Scenario: local-only server binding
 - **WHEN** 用户启动 `apps/webadmin-api`
 - **THEN** 服务监听地址为 `127.0.0.1`，并且配置中不存在允许绑定 `0.0.0.0` 的选项
 
-#### Scenario: WebAdmin API is sole backend (M7)
-- **WHEN** M7 完成后用户启动 WebAdmin
-- **THEN** 通过 `pnpm --filter @ziniao/webadmin-api start` 启动唯一 WebAdmin 后端；Python WebAdmin 已移除
+#### Scenario: WebAdmin API is sole backend
+- **WHEN** 用户启动 WebAdmin
+- **THEN** 通过 `pnpm --filter @ziniao/webadmin-api start` 启动唯一 WebAdmin 后端
 
 ### Requirement: WebAdmin API safety boundary
 `apps/webadmin-api` SHALL NOT become a browser automation or direct ZClaw bridge outlet. It MUST NOT directly access `127.0.0.1:9481`, `/zclaw/tools`, `/zclaw/tools/invoke`, `ZCLAW_API_KEY` or `~/.zclaw/config.json`; MUST NOT open Chrome/Safari/Edge/Firefox/Chromium; MUST NOT depend on Playwright/Selenium/Puppeteer/browser-use; and MUST NOT provide any local-browser fallback when bridge-dependent execution fails.
@@ -26,7 +26,7 @@ TBD - created by archiving change add-typescript-webadmin-api. Update Purpose af
 - **THEN** the run fails with an environment error and WebAdmin API does not open any local browser or browser automation tool
 
 ### Requirement: Flow management API
-WebAdmin API SHALL expose REST endpoints for flow management equivalent to the current Python WebAdmin backend. It MUST list non-template flows, return flow detail with extract references, validate flow content through `@ziniao/flow-engine`, save valid flow JSON with backup retention, reject invalid saves without mutating the existing flow, and accept manual run requests with flow-level duplicate-run protection.
+WebAdmin API SHALL expose REST endpoints for flow management. It MUST list non-template flows, return flow detail with extract references, validate flow content through `@ziniao/flow-engine`, save valid flow JSON with backup retention, reject invalid saves without mutating the existing flow, and accept manual run requests with flow-level duplicate-run protection.
 
 #### Scenario: list flows excludes template
 - **WHEN** a client requests the flows list

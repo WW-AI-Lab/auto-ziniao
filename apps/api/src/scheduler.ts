@@ -33,15 +33,22 @@ export function createScheduler(input: {
         });
         continue;
       }
-      const result = await input.runner.execute(String(sched.flow_id), sched.params as Record<string, string>);
-      input.storage.addScheduleRun({
+      const result = await input.runner.execute(String(sched.flow_id), sched.params as Record<string, string>, {
+        source: "schedule",
+        schedule_id: String(sched.id)
+      });
+      const scheduleRunId = input.storage.addScheduleRun({
         schedule_id: String(sched.id),
+        run_id: result.run_id ?? null,
         status: result.status,
         exit_code: result.exit_code,
         duration_ms: result.duration_ms,
         error: result.error,
         fired_at: now.toISOString()
       });
+      if (result.run_id) {
+        input.storage.updateFlowRun(result.run_id, { schedule_run_id: scheduleRunId });
+      }
     }
   }
 

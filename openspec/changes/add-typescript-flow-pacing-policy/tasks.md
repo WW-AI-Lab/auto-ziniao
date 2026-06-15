@@ -29,9 +29,8 @@
 ## 4. Documentation
 
 - [ ] 4.1 更新 `docs/03-流程定义规范.md`，加入 `pacing`、`risk`、`confirm` 字段说明、示例和沉淀 checklist。
-- [ ] 4.2 更新 `docs/06-TS迁移进度与路线图.md`，说明该 change 是 TS 目标态 flow-engine 扩展，不改变 Python 生产入口。
-- [ ] 4.3 更新 `docs/07-操作节奏与流程稳定性规划.md`，链接本 OpenSpec change，并标记哪些规划进入本阶段实现。
-- [ ] 4.4 更新 README 和 AGENTS 中的 TS 迁移边界：本 change 不修改 Python engine、CLI、WebAdmin 或 ZClaw bridge client 职责。
+- [ ] 4.2 更新 `docs/07-操作节奏与流程稳定性规划.md`，链接本 OpenSpec change，并标记哪些规划进入本阶段实现。
+- [ ] 4.3 更新 README 和 AGENTS 中的边界：本 change 不修改 ZClaw bridge client 职责。
 
 ## 5. Architecture Verification
 
@@ -40,6 +39,5 @@
 - [ ] 5.3 运行 `pnpm build`，确认 workspace build 通过。
 - [ ] 5.4 运行 `pnpm validate:baseline`，确认 pacing policy 纳入离线 baseline，且不要求紫鸟客户端在线。
 - [ ] 5.5 运行 `pnpm security:scan`，确认 `packages/flow-engine` 未直接访问 bridge，且未引入 Playwright/Selenium/Puppeteer/browser-use 或本机浏览器打开命令。
-- [ ] 5.6 运行 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`，确认 Python 生产入口未被本 change 破坏。
-- [ ] 5.7 运行 `openspec validate add-typescript-flow-pacing-policy --strict`，确认 proposal/design/specs/tasks 可归档。
-- [ ] 5.8 记录回滚验证方式：删除本 change 对 `packages/schemas`、`packages/flow-engine`、测试、文档和 root scripts 的改动后，Python 入口仍可运行。
+- [ ] 5.6 运行 `openspec validate add-typescript-flow-pacing-policy --strict`，确认 proposal/design/specs/tasks 可归档。
+- [ ] 5.7 记录回滚验证方式：删除本 change 对 `packages/schemas`、`packages/flow-engine`、测试、文档和 root scripts 的改动后，baseline 仍可运行。

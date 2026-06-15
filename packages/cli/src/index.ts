@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { Command, CommanderError, Option } from "commander";
@@ -6,6 +6,7 @@ import { Command, CommanderError, Option } from "commander";
 import { defaultRepoRoot, readJsonFile } from "@ziniao/core";
 import {
   FlowDefinition,
+  CreateFlowRequest,
   HealEventSchema,
   RunLogEntry,
   RunLogEntrySchema
@@ -32,9 +33,22 @@ export type CliClock = {
   now(): Date;
 };
 
+export type CliFetch = (input: string, init?: {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}) => Promise<{
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+}>;
+
 export type CliDependencies = {
   repoRoot?: string;
   dataRoot?: string;
+  apiBaseUrl?: string;
+  fetch?: CliFetch;
   toolClient?: FlowToolClient;
   agentRunner?: AgentRunner;
   healConfig?: HealConfig;
@@ -115,8 +129,8 @@ export function createCliApp(deps: CliDependencies = {}): CliApp {
     .description("从模板创建新流程")
     .argument("<flow_id>", "流程 ID")
     .argument("[name]", "中文名称")
-    .action((flowId: string, name: string | undefined) => {
-      state.exitCode = cmdNew(flowId, name, resolveContext(program, deps));
+    .action(async (flowId: string, name: string | undefined) => {
+      state.exitCode = await cmdNew(flowId, name, resolveContext(program, deps), deps);
     });
 
   program
@@ -288,26 +302,34 @@ function cmdValidate(flowId: string, ctx: CliContext): number {
   return result.issues.some((issue) => issue.level === "error") ? 1 : 0;
 }
 
-function cmdNew(flowId: string, name: string | undefined, ctx: CliContext): number {
-  const flowsDir = path.join(ctx.repoRoot, "flows");
-  const flowPath = path.join(flowsDir, `${flowId}.json`);
-  const templatePath = path.join(flowsDir, "_template.json");
-  if (existsSync(flowPath)) {
-    ctx.stderr(`流程已存在: ${flowPath}\n`);
+async function cmdNew(flowId: string, name: string | undefined, ctx: CliContext, deps: CliDependencies): Promise<number> {
+  const apiBaseUrl = (deps.apiBaseUrl ?? "http://127.0.0.1:9482").replace(/\/+$/, "");
+  const fetcher = deps.fetch ?? globalThis.fetch;
+  if (!fetcher) {
+    ctx.stderr("WebAdmin API 请求能力不可用。请使用 Node.js LTS 运行 CLI，或先启动 pnpm api 后重试。\n");
     return 1;
   }
-  if (!existsSync(templatePath)) {
-    ctx.stderr(`模板不存在: ${templatePath}\n`);
+  const request: CreateFlowRequest = { id: flowId };
+  if (name !== undefined) request.name = name;
+  try {
+    const response = await fetcher(`${apiBaseUrl}/api/flows`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request)
+    });
+    if (!response.ok) {
+      ctx.stderr(`${await renderApiError(response)}\n`);
+      return 1;
+    }
+    const body = await response.json() as { id?: string; content?: string };
+    ctx.stdout(`已创建流程: ${body.id ?? flowId}\n`);
+    ctx.stdout(`下一步: 通过 WebAdmin API 校验并运行，或使用 ziniao validate ${flowId} && ziniao run ${flowId} -v --no-heal\n`);
+    return 0;
+  } catch (error) {
+    ctx.stderr(`WebAdmin API 不可达: ${errorMessage(error)}\n`);
+    ctx.stderr("请先启动 pnpm api，确认服务监听 http://127.0.0.1:9482 后重试。\n");
     return 1;
   }
-  mkdirSync(flowsDir, { recursive: true });
-  const content = readFileSync(templatePath, "utf8")
-    .replaceAll("__FLOW_ID__", flowId)
-    .replaceAll("__FLOW_NAME__", name ?? flowId);
-  writeFileSync(flowPath, content, "utf8");
-  ctx.stdout(`已创建流程: ${flowPath}\n`);
-  ctx.stdout(`下一步: ziniao validate ${flowId} && ziniao run ${flowId} -v --no-heal\n`);
-  return 0;
 }
 
 function cmdSetEnabled(flowId: string, enabled: boolean, ctx: CliContext): number {
@@ -607,6 +629,24 @@ function flowFilePath(repoRoot: string, flowId: string): string {
 
 function writeJsonFile(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function renderApiError(response: { status: number; json(): Promise<unknown>; text(): Promise<string> }): Promise<string> {
+  try {
+    const parsed = await response.json();
+    if (isRecord(parsed) && isRecord(parsed.error) && typeof parsed.error.message === "string") {
+      return parsed.error.message;
+    }
+  } catch {
+    // Fall through to text body.
+  }
+  try {
+    const text = await response.text();
+    if (text.trim()) return text.trim();
+  } catch {
+    // Fall through to HTTP status.
+  }
+  return `WebAdmin API 返回 HTTP ${response.status}`;
 }
 
 function safeJson(value: unknown): string {

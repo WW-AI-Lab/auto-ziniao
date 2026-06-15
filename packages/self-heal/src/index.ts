@@ -112,6 +112,7 @@ export type BuildPromptResult = {
 export type TriggerHealResult = {
   heal_id: string;
   error_type: HealErrorType;
+  status?: "triggered" | "skipped" | "success" | "failed" | "timeout" | "dry_run" | "disabled";
   prompt_path: string;
   heal_log_path: string;
   dry_run?: boolean;
@@ -423,13 +424,14 @@ export async function triggerHeal(
       step_id: stepId,
       heal_id: promptResult.heal_id,
       error_type: promptResult.error_type,
+      status: "disabled",
       timestamp: clock.now().toISOString()
     });
-    return { ...base, skipped: true, reason: "config.heal.enabled = false" };
+    return { ...base, status: "disabled", skipped: true, reason: "config.heal.enabled = false" };
   }
 
   if (options.dryRun) {
-    return { ...base, dry_run: true };
+    return { ...base, status: "dry_run", dry_run: true };
   }
 
   const knownIssue = checkKnownIssues(
@@ -445,9 +447,10 @@ export async function triggerHeal(
       step_id: stepId,
       heal_id: promptResult.heal_id,
       error_type: promptResult.error_type,
+      status: "skipped",
       timestamp: clock.now().toISOString()
     });
-    return { ...base, skipped: true, reason, known_issue: knownIssue };
+    return { ...base, status: "skipped", skipped: true, reason, known_issue: knownIssue };
   }
 
   const cooldownReason = await checkCooldown(
@@ -462,15 +465,27 @@ export async function triggerHeal(
       step_id: stepId,
       heal_id: promptResult.heal_id,
       error_type: promptResult.error_type,
+      status: "skipped",
       timestamp: clock.now().toISOString()
     });
-    return { ...base, skipped: true, reason: cooldownReason };
+    return { ...base, status: "skipped", skipped: true, reason: cooldownReason };
   }
 
   const agentName = options.agent ?? config.heal.agent;
   const agentConfig = config.heal.agents[agentName];
   if (!agentConfig) {
-    return { ...base, success: false, error: `config.json 中未配置 agent: ${agentName}` };
+    const message = `config.json 中未配置 agent: ${agentName}`;
+    await logHealEvent(repoRoot, {
+      event: "failed",
+      reason: "agent_missing",
+      flow_id: input.flow_id,
+      step_id: stepId,
+      heal_id: promptResult.heal_id,
+      error_type: promptResult.error_type,
+      status: "failed",
+      timestamp: clock.now().toISOString()
+    });
+    return { ...base, status: "failed", success: false, error: message };
   }
 
   const placeholders = {
@@ -496,6 +511,7 @@ export async function triggerHeal(
     session_key: placeholders.session_key,
     prompt_path: promptResult.prompt_path,
     heal_log_path: promptResult.heal_log_path,
+    status: result.timedOut ? "timeout" : result.exitCode === 0 ? "success" : "failed",
     timestamp: clock.now().toISOString(),
     cli_exit_code: result.exitCode,
     cli_stderr: (result.stderr ?? "").slice(0, 500)
@@ -503,12 +519,12 @@ export async function triggerHeal(
   await logHealEvent(repoRoot, event);
 
   if (result.timedOut) {
-    return { ...base, success: false, agent: agentName, error: "CLI timeout" };
+    return { ...base, status: "timeout", success: false, agent: agentName, error: "CLI timeout" };
   }
   if (result.commandMissing) {
-    return { ...base, success: false, agent: agentName, error: `${command[0]} not found` };
+    return { ...base, status: "failed", success: false, agent: agentName, error: `${command[0]} not found` };
   }
-  return { ...base, success: result.exitCode === 0, agent: agentName };
+  return { ...base, status: result.exitCode === 0 ? "success" : "failed", success: result.exitCode === 0, agent: agentName };
 }
 
 export function createCommandAgentRunner(): AgentRunner {

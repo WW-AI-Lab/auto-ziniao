@@ -14,8 +14,8 @@ TBD - created by archiving change add-typescript-cli. Update Purpose after archi
 - **WHEN** 用户执行 root `pnpm build`
 - **THEN** `packages/cli` 与既有 TS 包一同完成构建，并生成可执行入口所需产物
 
-### Requirement: Python CLI command semantics compatibility
-系统 SHALL 在 `ziniao` 中兼容当前 `manager.py` 的主要命令语义。M5 MUST 覆盖 `list`、`run`、`run-all`、`retry`、`new`、`validate`、`history`、`enable`、`disable`、`heals`、`stats`、`cron`。CLI 输出不要求逐字匹配 Python，但命令参数、成功/失败含义、数据文件读写和 exit code MUST 与当前日常操作语义一致。
+### Requirement: CLI command semantics
+系统 SHALL 在 `ziniao` 中提供完整的命令语义。MUST 覆盖 `list`、`run`、`run-all`、`retry`、`new`、`validate`、`history`、`enable`、`disable`、`heals`、`stats`、`cron`。命令参数、成功/失败含义、数据文件读写和 exit code MUST 保持一致。
 
 #### Scenario: validate success and failure exit codes
 - **WHEN** 用户执行 `ziniao validate orders_overview`
@@ -30,7 +30,7 @@ TBD - created by archiving change add-typescript-cli. Update Purpose after archi
 - **THEN** CLI 返回非 0，提示 flow 不存在，并不得创建或修改 flow 文件
 
 ### Requirement: Flow execution integration
-系统 SHALL 通过 `@ziniao/flow-engine` 执行 flow。`ziniao run` MUST 支持 `-p/--param k=v`、`-v/--verbose` 和 `--no-heal`；MUST 复用 flow-engine 的参数解析、变量解析、工具调度、output 写入和 `data/logs/runs.jsonl` 追加能力。`ziniao run-all` MUST 串行执行 enabled flows，保持与 Python CLI 的低并发风险语义一致。
+系统 SHALL 通过 `@ziniao/flow-engine` 执行 flow。`ziniao run` MUST 支持 `-p/--param k=v`、`-v/--verbose` 和 `--no-heal`；MUST 复用 flow-engine 的参数解析、变量解析、工具调度、output 写入和 `data/logs/runs.jsonl` 追加能力。`ziniao run-all` MUST 串行执行 enabled flows，保持低并发风险语义一致。
 
 #### Scenario: run local flow with params
 - **WHEN** 用户执行 `ziniao run webadmin_selftest -p greeting=hello --no-heal`

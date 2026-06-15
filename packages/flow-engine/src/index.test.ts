@@ -131,7 +131,7 @@ describe("flow loader, validator, and params", () => {
     expect(() => parseParams(["broken"])).toThrow(/key=value/);
   });
 
-  it("agrees with Python validate for current flows", () => {
+  it("validates current flows correctly", () => {
     for (const flowId of [
       "account_health",
       "inventory_check",

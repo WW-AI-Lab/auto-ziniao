@@ -36,8 +36,7 @@ function summarize(flow: FlowDefinition) {
     stepIds: flow.steps.map((step) => step.id ?? ""),
     tools: [...new Set(flow.steps.map((step) => step.tool).filter(Boolean))].sort(),
     actions: [...new Set(flow.steps.map((step) => step.action).filter(Boolean))].sort(),
-    extractRefs: collectExtractRefs(flow),
-    pythonValidate: { errors: 0, warnings: 0 }
+    extractRefs: collectExtractRefs(flow)
   };
 }
 

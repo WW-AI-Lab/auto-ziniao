@@ -18,6 +18,7 @@ export const HealEventSchema = z
   .object({
     timestamp: z.string().optional(),
     event: z.string().optional(),
+    status: z.string().optional(),
     heal_id: z.string().optional(),
     flow_id: z.string().optional(),
     step_id: z.string().optional(),

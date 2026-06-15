@@ -42,6 +42,61 @@ describe("api app", () => {
     await waitFor(() => app.inject({ method: "GET", url: `/api/flow-runs/${token}` }).then((r) => r.json().status !== "running"));
     const status = await app.inject({ method: "GET", url: `/api/flow-runs/${token}` });
     expect(status.json().status).toBe("success");
+    expect(status.json().run_id).toBeTruthy();
+    const runDetail = await app.inject({ method: "GET", url: `/api/runs/${status.json().run_id}` });
+    expect(runDetail.statusCode).toBe(200);
+    expect(String(runDetail.json().data_summary.save)).toContain("file:");
+    await app.close();
+  });
+
+  it("creates flows from API-owned template and manages extracts offline", async () => {
+    const repo = createRepo();
+    const app = await createTestApp(repo);
+
+    const template = await app.inject({ method: "GET", url: "/api/flows/template" });
+    expect(template.statusCode).toBe(200);
+    expect(template.json().content).toContain("__FLOW_ID__");
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/flows",
+      payload: { id: "sample_flow", name: "样例流程" }
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json().id).toBe("sample_flow");
+    expect(readFileSync(path.join(repo.root, "flows", "sample_flow.json"), "utf8")).toContain("\"name\": \"样例流程\"");
+
+    const duplicate = await app.inject({
+      method: "POST",
+      url: "/api/flows",
+      payload: { id: "sample_flow", name: "重复" }
+    });
+    expect(duplicate.statusCode).toBe(409);
+
+    const invalidContent = await app.inject({
+      method: "POST",
+      url: "/api/flows",
+      payload: { id: "bad_flow", content: "{\"id\":\"other\",\"steps\":[]}" }
+    });
+    expect(invalidContent.statusCode).toBe(400);
+    expect(existsSync(path.join(repo.root, "flows", "bad_flow.json"))).toBe(false);
+
+    const savedExtract = await app.inject({
+      method: "PUT",
+      url: "/api/extracts/sample.js",
+      payload: { content: "(() => JSON.stringify({ ok: true }))();" }
+    });
+    expect(savedExtract.statusCode).toBe(200);
+    expect(savedExtract.json().path).toBe("extracts/sample.js");
+
+    const extract = await app.inject({ method: "GET", url: "/api/extracts/sample.js" });
+    expect(extract.statusCode).toBe(200);
+    expect(extract.json().exists).toBe(true);
+    expect(extract.json().content).toContain("JSON.stringify");
+
+    expect((await app.inject({ method: "GET", url: "/api/extracts/%2e%2e/outside.js" })).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await app.inject({ method: "PUT", url: "/api/extracts/%2e%2e/outside.js", payload: { content: "bad" } })).statusCode).toBeGreaterThanOrEqual(400);
+    expect(existsSync(path.join(repo.root, "outside.js"))).toBe(false);
     await app.close();
   });
 
@@ -56,6 +111,11 @@ describe("api app", () => {
     expect((await app.inject({ method: "GET", url: "/api/outputs" })).json().files[0].name).toBe("result.json");
     expect((await app.inject({ method: "GET", url: "/api/outputs/preview?path=result.json" })).json().content).toContain("ok");
     expect((await app.inject({ method: "GET", url: "/api/runs" })).json().items).toHaveLength(1);
+    expect((await app.inject({ method: "GET", url: "/api/runs?flow_id=local&status=success" })).json().items).toHaveLength(1);
+    const historicalId = (await app.inject({ method: "GET", url: "/api/flows/local/runs" })).json().items[0].run_id;
+    const historicalDetail = await app.inject({ method: "GET", url: `/api/runs/${historicalId}` });
+    expect(historicalDetail.statusCode).toBe(200);
+    expect(historicalDetail.json().detail_available).toBe(false);
     const stats = (await app.inject({ method: "GET", url: "/api/stats" })).json();
     expect(stats.runs_total).toBe(1);
     expect(stats.runs_error).toBe(0);
@@ -65,12 +125,96 @@ describe("api app", () => {
     await app.close();
   });
 
+  it("exposes failed run detail with mock self-heal metadata", async () => {
+    const repo = createRepo();
+    const app = await createTestApp(repo, {
+      agentRunner: {
+        async run() {
+          return { exitCode: 0, stdout: "healed" };
+        }
+      }
+    });
+    const run = await app.inject({
+      method: "POST",
+      url: "/api/flows/failing/run",
+      payload: { params: { store_name: "demo" } }
+    });
+    expect(run.statusCode).toBe(200);
+    const token = run.json().token;
+    await waitFor(() => app.inject({ method: "GET", url: `/api/flow-runs/${token}` }).then((r) => r.json().status !== "running"));
+    const status = (await app.inject({ method: "GET", url: `/api/flow-runs/${token}` })).json();
+    expect(status.status).toBe("failed");
+    expect(status.heal_summary.status).toBe("success");
+
+    const history = (await app.inject({ method: "GET", url: "/api/flows/failing/runs?status=failed" })).json();
+    expect(history.items[0].run_id).toBe(status.run_id);
+    const detail = (await app.inject({ method: "GET", url: `/api/runs/${status.run_id}` })).json();
+    expect(detail.failed_step.step_id).toBe("fail");
+    expect(detail.heal_summary.heal_id).toBeTruthy();
+    expect(detail.heal_events[0].status).toBe("success");
+    expect(detail.heal_context.flow_id).toBe("failing");
+    await app.close();
+  });
+
+  it("filters and paginates unified run history", async () => {
+    const repo = createRepo();
+    const app = await createTestApp(repo);
+    const tokens: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const run = await app.inject({
+        method: "POST",
+        url: "/api/flows/local/run",
+        payload: { params: { greeting: String(i) } }
+      });
+      tokens.push(run.json().token);
+      await waitFor(() =>
+        app.inject({ method: "GET", url: `/api/flow-runs/${run.json().token}` }).then((r) => r.json().status !== "running")
+      );
+    }
+
+    const all = await app.inject({ method: "GET", url: "/api/runs?flow_id=local" });
+    expect(all.json().total).toBeGreaterThanOrEqual(2);
+
+    const successOnly = await app.inject({ method: "GET", url: "/api/runs?flow_id=local&status=success" });
+    expect(successOnly.json().items.every((item: { status: string }) => item.status === "success")).toBe(true);
+
+    const page = await app.inject({ method: "GET", url: "/api/runs?flow_id=local&limit=1&offset=0" });
+    expect(page.json().items).toHaveLength(1);
+    expect(page.json().total).toBeGreaterThanOrEqual(2);
+    await app.close();
+  });
+
+  it("keeps run detail available when heal files are missing", async () => {
+    const repo = createRepo();
+    const storage = createStorage(path.join(repo.dataRoot, "webadmin.db"));
+    const run = storage.createFlowRun({
+      run_id: "run_missing_heal",
+      source: "manual",
+      flow_id: "local",
+      status: "failed",
+      started_at: "2026-06-15T00:00:00.000Z"
+    });
+    storage.updateFlowRun(run.run_id, {
+      status: "failed",
+      finished_at: "2026-06-15T00:00:01.000Z",
+      error: "missing context",
+      heal_summary: { status: "failed", heal_id: "heal_missing", error: "context gone" }
+    });
+    const app = await createTestApp(repo, { storage });
+    const detail = await app.inject({ method: "GET", url: "/api/runs/run_missing_heal" });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json().heal_summary.context_available).toBe(false);
+    await app.close();
+  });
+
   it("manages schedules and scheduler tick with temporary sqlite", async () => {
     const repo = createRepo();
     const storage = createStorage(path.join(repo.dataRoot, "webadmin.db"));
     const runner = createFlowRunner({
       repoRoot: repo.root,
       dataRoot: repo.dataRoot,
+      storage,
+      agentRunner: { async run() { return { exitCode: 0, stdout: "OK" }; } },
       sleeper: async () => undefined,
       clock: { now: () => new Date("2026-06-15T08:00:00.000Z") }
     });
@@ -88,8 +232,34 @@ describe("api app", () => {
     storage.updateSchedule(sid, { next_run_at: "2026-06-15T07:59:00.000Z" });
     const scheduler = createScheduler({ storage, runner, clock: { now: () => new Date("2026-06-15T08:00:00.000Z") } });
     await scheduler.tick();
-    expect(storage.listScheduleRuns(sid)).toHaveLength(1);
+    const scheduleRuns = storage.listScheduleRuns(sid);
+    expect(scheduleRuns).toHaveLength(1);
+    expect(scheduleRuns[0].run_id).toBeTruthy();
+    const scheduleHistory = await app.inject({ method: "GET", url: `/api/schedules/${sid}/runs` });
+    expect(scheduleHistory.json().items[0].run_id).toBe(scheduleRuns[0].run_id);
+    const runDetail = await app.inject({ method: "GET", url: `/api/runs/${scheduleRuns[0].run_id}` });
+    expect(runDetail.statusCode).toBe(200);
     expect(new Date(String(storage.getSchedule(sid)?.next_run_at)).getTime()).toBeGreaterThan(new Date("2026-06-15T08:00:00.000Z").getTime());
+
+    const busy = storage.createSchedule({
+      name: "busy",
+      flow_id: "local",
+      trigger: { type: "interval", minutes: 1 },
+      next_run_at: "2026-06-15T07:59:00.000Z"
+    });
+    const skippedScheduler = createScheduler({
+      storage,
+      runner: {
+        execute: async () => ({ status: "skipped", exit_code: null, duration_ms: 0, error: "busy" }),
+        isRunning: () => true,
+        runs: new Map(),
+        start: () => ({ token: "t", run_id: "run_t", flow_id: "local", status: "running" }),
+        get: () => null
+      } as unknown as ReturnType<typeof createFlowRunner>,
+      clock: { now: () => new Date("2026-06-15T08:00:00.000Z") }
+    });
+    await skippedScheduler.tick();
+    expect(storage.listScheduleRuns(busy.id)[0].status).toBe("skipped");
     await app.close();
   });
 
@@ -180,6 +350,17 @@ function createRepo() {
       { id: "say", action: "print", message: "${params.greeting}" },
       { id: "save", action: "save_json", path: "local/result.json", data: { ok: true } }
     ]
+  });
+  writeFlow(root, "failing", {
+    id: "failing",
+    name: "失败流程",
+    version: 1,
+    enabled: true,
+    params: { store_name: "" },
+    steps: [
+      { id: "fail", action: "fail", message: "selector changed", on_fail: { action: "heal", context: "extract_failed" } }
+    ],
+    heal: { hints: "测试失败流程" }
   });
   return { root, dataRoot };
 }

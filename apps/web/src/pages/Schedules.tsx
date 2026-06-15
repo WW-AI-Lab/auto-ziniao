@@ -8,6 +8,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import {
   del, get, post, put, type FlowSummary, type Schedule, type ScheduleRun,
 } from '../api'
+import RunDetailDrawer from './RunDetailDrawer'
 
 const RUN_TAG: Record<string, ReactNode> = {
   success: <Tag color="green">成功</Tag>,
@@ -43,6 +44,7 @@ export default function Schedules() {
   const [editTarget, setEditTarget] = useState<Schedule | 'new' | null>(null)
   const [form] = Form.useForm<FormValues>()
   const [runsOf, setRunsOf] = useState<Record<string, ScheduleRun[]>>({})
+  const [detailRunId, setDetailRunId] = useState<string | null>(null)
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -159,10 +161,26 @@ export default function Schedules() {
                   { title: '触发时间', dataIndex: 'fired_at' },
                   { title: '状态', dataIndex: 'status', render: (v) => RUN_TAG[v] ?? v },
                   {
+                    title: '自愈',
+                    render: (_, r) => r.heal_summary?.status ?? '-',
+                  },
+                  {
                     title: '耗时', dataIndex: 'duration_ms',
                     render: (v) => (v != null ? `${v}ms` : '-'),
                   },
-                  { title: '错误', dataIndex: 'error', render: (v) => v ?? '-' },
+                  {
+                    title: '错误',
+                    dataIndex: 'error',
+                    render: (v) => v ? <Typography.Text style={{ wordBreak: 'break-word' }}>{v}</Typography.Text> : '-',
+                  },
+                  {
+                    title: '操作',
+                    render: (_, r) => r.run_id ? (
+                      <Button size="small" onClick={() => setDetailRunId(r.run_id ?? null)}>详情</Button>
+                    ) : (
+                      <Typography.Text type="secondary">无 flow run</Typography.Text>
+                    ),
+                  },
                 ]}
               />
             ),
@@ -266,6 +284,11 @@ export default function Schedules() {
           </Form.Item>
         </Form>
       </Modal>
+      <RunDetailDrawer
+        open={!!detailRunId}
+        runId={detailRunId}
+        onClose={() => setDetailRunId(null)}
+      />
     </div>
   )
 }

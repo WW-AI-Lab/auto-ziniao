@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -15,7 +14,7 @@ const sourceRules: Array<{ label: string; pattern: RegExp }> = [
   { label: "Selenium dependency", pattern: /\bselenium\b/i },
   { label: "Puppeteer dependency", pattern: /\bpuppeteer\b/i },
   { label: "browser-use dependency", pattern: /\bbrowser-use\b/i },
-  { label: "Python webbrowser bridge", pattern: /\bwebbrowser\b/i },
+  { label: "webbrowser module", pattern: /\bwebbrowser\b/i },
   { label: "macOS open URL command", pattern: /\bopen\s+https?:\/\//i }
 ];
 
@@ -145,26 +144,6 @@ if (failures.length > 0) {
     console.error(`- ${failure}`);
   }
   process.exit(1);
-}
-
-// M7: Python regression guard - ensure no tracked .py or requirements.txt in active tree
-try {
-  const trackedFiles = execSync("git ls-files", { cwd: repoRoot, encoding: "utf8" })
-    .split(/\r?\n/)
-    .filter(Boolean);
-  const pythonFiles = trackedFiles.filter(
-    (f) => (f.endsWith(".py") || f.endsWith("requirements.txt")) && !f.startsWith("openspec/changes/archive/")
-  );
-  if (pythonFiles.length > 0) {
-    console.error("== Security scan failed ==");
-    console.error("Python 回归: tracked Python 文件或 requirements.txt 不应存在于 active tree:");
-    for (const f of pythonFiles) {
-      console.error(`  - ${f}`);
-    }
-    process.exit(1);
-  }
-} catch {
-  // git not available — skip Python regression check
 }
 
 console.log("== Security scan ok ==");

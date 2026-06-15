@@ -4,11 +4,13 @@ import {
   Table, Tag, Typography,
 } from 'antd'
 import {
-  CaretRightOutlined, EditOutlined, ReloadOutlined, SaveOutlined,
+  CaretRightOutlined, EditOutlined, HistoryOutlined, PlusOutlined, ReloadOutlined, SaveOutlined,
 } from '@ant-design/icons'
 import {
-  get, post, put, type FlowDetail, type FlowSummary, type ManualRun,
+  get, post, put, type CreateFlowResponse, type ExtractDetail, type FlowDetail,
+  type FlowRunHistoryItem, type FlowSummary, type ManualRun,
 } from '../api'
+import RunDetailDrawer from './RunDetailDrawer'
 
 const STATUS_TAG: Record<string, ReactNode> = {
   success: <Tag color="green">成功</Tag>,
@@ -24,11 +26,21 @@ export default function Flows() {
   const [flows, setFlows] = useState<FlowSummary[]>([])
   const [loading, setLoading] = useState(false)
 
+  // 创建流程
+  const [createOpen, setCreateOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createForm] = Form.useForm()
+
   // 编辑抽屉
   const [editing, setEditing] = useState<FlowDetail | null>(null)
   const [editorText, setEditorText] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // extract 编辑
+  const [extractEditor, setExtractEditor] = useState<{ name: string; content: string; exists: boolean } | null>(null)
+  const [extractSaving, setExtractSaving] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
 
   // 运行对话框
   const [runFlow, setRunFlow] = useState<FlowSummary | null>(null)
@@ -37,6 +49,12 @@ export default function Flows() {
   // 运行状态跟踪
   const [tracking, setTracking] = useState<ManualRun | null>(null)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 历史与详情
+  const [historyFlow, setHistoryFlow] = useState<FlowSummary | null>(null)
+  const [historyRuns, setHistoryRuns] = useState<FlowRunHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [detailRunId, setDetailRunId] = useState<string | null>(null)
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -65,6 +83,26 @@ export default function Flows() {
     }
   }
 
+  const createFlow = async () => {
+    const values = await createForm.validateFields()
+    setCreating(true)
+    try {
+      const created = await post<CreateFlowResponse>('/api/flows', {
+        id: values.id,
+        name: values.name,
+      })
+      message.success(`已创建流程: ${created.id}`)
+      setCreateOpen(false)
+      createForm.resetFields()
+      reload()
+      openEditor(created.id)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const save = async () => {
     if (!editing) return
     setSaving(true)
@@ -88,6 +126,39 @@ export default function Flows() {
     }
   }
 
+  const openExtractEditor = async (path: string) => {
+    const name = path.replace(/^extracts\//, '')
+    setExtractError(null)
+    try {
+      const detail = await get<ExtractDetail>(extractUrl(name))
+      setExtractEditor({
+        name: detail.name,
+        exists: detail.exists,
+        content: detail.content ?? defaultExtractContent(),
+      })
+    } catch (e) {
+      message.error((e as Error).message)
+    }
+  }
+
+  const saveExtract = async () => {
+    if (!extractEditor) return
+    setExtractSaving(true)
+    setExtractError(null)
+    try {
+      const saved = await put<ExtractDetail>(extractUrl(extractEditor.name), {
+        content: extractEditor.content,
+      })
+      message.success(`已保存 extract: ${saved.path}`)
+      setExtractEditor({ name: saved.name, exists: saved.exists, content: saved.content ?? '' })
+      if (editing) openEditor(editing.id)
+    } catch (e) {
+      setExtractError((e as Error).message)
+    } finally {
+      setExtractSaving(false)
+    }
+  }
+
   const startRun = async (flow: FlowSummary, params: Record<string, string>) => {
     try {
       const accepted = await post<ManualRun>(`/api/flows/${flow.id}/run`, { params })
@@ -107,11 +178,29 @@ export default function Flows() {
     }
   }
 
+  const openHistory = async (flow: FlowSummary) => {
+    setHistoryFlow(flow)
+    setHistoryLoading(true)
+    try {
+      const data = await get<{ items: FlowRunHistoryItem[] }>(`/api/flows/${flow.id}/runs?limit=50`)
+      setHistoryRuns(data.items)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}>
         <Typography.Title level={4} style={{ margin: 0 }}>流程管理</Typography.Title>
-        <Button icon={<ReloadOutlined />} onClick={reload}>刷新</Button>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            创建流程
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={reload}>刷新</Button>
+        </Space>
       </Space>
 
       <Card>
@@ -161,6 +250,9 @@ export default function Flows() {
                   </Button>
                   <Button size="small" icon={<EditOutlined />} onClick={() => openEditor(r.id)}>
                     编辑
+                  </Button>
+                  <Button size="small" icon={<HistoryOutlined />} onClick={() => openHistory(r)}>
+                    历史
                   </Button>
                 </Space>
               ),
@@ -215,16 +307,70 @@ export default function Flows() {
             style={{ marginTop: 16 }}
             items={editing.extracts.map((ex) => ({
               key: ex.path,
-              label: `提取脚本（只读）: ${ex.path}${ex.exists ? '' : '（不存在）'}`,
+              label: `提取脚本: ${ex.path}${ex.exists ? '' : '（不存在）'}`,
               children: (
-                <pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 12 }}>
-                  {ex.content ?? '（文件不存在）'}
-                </pre>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openExtractEditor(ex.path)}>
+                    {ex.exists ? '编辑' : '创建'}
+                  </Button>
+                  <pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 12 }}>
+                    {ex.content ?? '（文件不存在）'}
+                  </pre>
+                </Space>
               ),
             }))}
           />
         )}
       </Drawer>
+
+      {/* 创建流程 */}
+      <Modal
+        title="创建流程"
+        open={createOpen}
+        okText="创建"
+        confirmLoading={creating}
+        onOk={createFlow}
+        onCancel={() => setCreateOpen(false)}
+      >
+        <Form form={createForm} layout="vertical">
+          <Form.Item
+            name="id"
+            label="flow_id"
+            rules={[
+              { required: true, message: '请输入 flow_id' },
+              { pattern: /^[A-Za-z0-9_-]+$/, message: '仅支持字母、数字、下划线和连字符' },
+            ]}
+          >
+            <Input placeholder="orders_overview" />
+          </Form.Item>
+          <Form.Item name="name" label="中文名">
+            <Input placeholder="订单概览" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* extract 编辑 */}
+      <Modal
+        title={`编辑 extract: ${extractEditor?.name ?? ''}`}
+        open={!!extractEditor}
+        okText="保存"
+        width={720}
+        confirmLoading={extractSaving}
+        onOk={saveExtract}
+        onCancel={() => setExtractEditor(null)}
+      >
+        {extractError && (
+          <Alert type="error" showIcon style={{ marginBottom: 12 }}
+            message="保存失败" description={extractError} />
+        )}
+        <Input.TextArea
+          value={extractEditor?.content ?? ''}
+          onChange={(e) => setExtractEditor((current) =>
+            current ? { ...current, content: e.target.value } : current)}
+          autoSize={{ minRows: 16, maxRows: 28 }}
+          style={{ fontFamily: 'Menlo, Monaco, monospace', fontSize: 12 }}
+        />
+      </Modal>
 
       {/* 运行参数对话框（按 params 声明自动生成表单） */}
       <Modal
@@ -280,13 +426,85 @@ export default function Flows() {
               {tracking.output}
             </pre>
           )}
+          {tracking?.run_id && tracking.status !== 'running' && (
+            <Button size="small" icon={<HistoryOutlined />} onClick={() => setDetailRunId(tracking.run_id!)}>
+              查看详情
+            </Button>
+          )}
+          {tracking?.heal_summary && (
+            <Typography.Text type="secondary">
+              自愈状态：{String(tracking.heal_summary.status ?? '-')}
+            </Typography.Text>
+          )}
           {tracking?.status === 'running' && (
             <Typography.Text type="secondary">
-              运行中…（每 2 秒刷新；失败时引擎将按既有机制自动触发自愈）
+              运行中…（每 2 秒刷新；完成后可查看执行详情和自愈状态）
             </Typography.Text>
           )}
         </Space>
       </Modal>
+
+      <Drawer
+        title={`运行历史: ${historyFlow?.name ?? ''}`}
+        open={!!historyFlow}
+        width={860}
+        onClose={() => setHistoryFlow(null)}
+      >
+        <Table<FlowRunHistoryItem>
+          rowKey="run_id"
+          loading={historyLoading}
+          dataSource={historyRuns}
+          pagination={{ pageSize: 10 }}
+          size="small"
+          columns={[
+            { title: '时间', render: (_, r) => r.started_at ?? r.timestamp ?? '-' },
+            { title: '来源', dataIndex: 'source' },
+            { title: '状态', dataIndex: 'status', render: (v) => STATUS_TAG[v] ?? v },
+            {
+              title: '耗时',
+              dataIndex: 'duration_ms',
+              render: (v) => (v != null ? `${v}ms` : '-'),
+            },
+            {
+              title: '错误',
+              dataIndex: 'error',
+              render: (v) => v ? <Typography.Text style={{ wordBreak: 'break-word' }}>{v}</Typography.Text> : '-',
+            },
+            {
+              title: '自愈',
+              render: (_, r) => r.heal_summary?.status ?? '-',
+            },
+            {
+              title: '操作',
+              render: (_, r) => (
+                <Button size="small" onClick={() => setDetailRunId(r.run_id)}>
+                  详情
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </Drawer>
+
+      <RunDetailDrawer
+        open={!!detailRunId}
+        runId={detailRunId}
+        onClose={() => setDetailRunId(null)}
+      />
     </div>
   )
+}
+
+function extractUrl(name: string) {
+  return `/api/extracts/${name.split('/').map(encodeURIComponent).join('/')}`
+}
+
+function defaultExtractContent() {
+  return [
+    '(() => {',
+    '  const data = {};',
+    '  return JSON.stringify(data);',
+    '})();',
+    '',
+  ].join('\n')
 }

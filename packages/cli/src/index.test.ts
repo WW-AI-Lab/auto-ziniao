@@ -74,24 +74,42 @@ describe("ziniao CLI", () => {
     expect(result.stderr).toContain("流程不存在");
   });
 
-  it("creates a new flow from template and refuses overwrite", async () => {
+  it("creates a new flow through WebAdmin API without writing local flow files", async () => {
     const repo = createRepo();
-    const first = await run(repo, ["new", "sample", "样例"]);
-    expect(first.code).toBe(0);
-    const filePath = path.join(repo.root, "flows", "sample.json");
-    expect(readFileSync(filePath, "utf8")).toContain("\"id\": \"sample\"");
-    expect(readFileSync(filePath, "utf8")).toContain("\"name\": \"样例\"");
-
-    const second = await run(repo, ["new", "sample"]);
-    expect(second.code).toBe(1);
-    expect(second.stderr).toContain("流程已存在");
+    const requests: Array<{ url: string; body: unknown }> = [];
+    const result = await run(repo, ["new", "sample", "样例"], {
+      fetch: mockFetch(async (url, init) => {
+        requests.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+        return jsonResponse(200, { id: "sample", name: "样例", content: "{}" });
+      })
+    });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("已创建流程: sample");
+    expect(requests).toEqual([{ url: "http://127.0.0.1:9482/api/flows", body: { id: "sample", name: "样例" } }]);
+    expect(existsSync(path.join(repo.root, "flows", "sample.json"))).toBe(false);
   });
 
-  it("reports missing template on new", async () => {
-    const repo = createRepo({ withTemplate: false });
-    const result = await run(repo, ["new", "sample"]);
+  it("reports WebAdmin API conflict and does not fall back to local files", async () => {
+    const repo = createRepo();
+    const result = await run(repo, ["new", "sample"], {
+      fetch: mockFetch(async () => jsonResponse(409, { error: { code: "conflict", message: "流程已存在: sample" } }))
+    });
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("模板不存在");
+    expect(result.stderr).toContain("流程已存在: sample");
+    expect(existsSync(path.join(repo.root, "flows", "sample.json"))).toBe(false);
+  });
+
+  it("reports WebAdmin API unavailable on new without local fallback", async () => {
+    const repo = createRepo({ withTemplate: false });
+    const result = await run(repo, ["new", "sample"], {
+      fetch: mockFetch(async () => {
+        throw new Error("connect ECONNREFUSED");
+      })
+    });
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("WebAdmin API 不可达");
+    expect(result.stderr).toContain("pnpm api");
+    expect(existsSync(path.join(repo.root, "flows", "sample.json"))).toBe(false);
   });
 
   it("enables and disables only the target flow", async () => {
@@ -396,4 +414,24 @@ function testHealConfig(): HealConfig {
 
 function runner(run: () => AgentRunResult | Promise<AgentRunResult>): AgentRunner {
   return { run: async () => run() };
+}
+
+function mockFetch(
+  handler: (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<ReturnType<typeof jsonResponse>>
+) {
+  return async (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) =>
+    handler(url, init);
+}
+
+function jsonResponse(status: number, body: unknown) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    async json() {
+      return body;
+    },
+    async text() {
+      return JSON.stringify(body);
+    }
+  };
 }

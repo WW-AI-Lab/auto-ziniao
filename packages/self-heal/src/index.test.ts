@@ -79,7 +79,7 @@ describe("classification and known issues", () => {
     ).toBe("extract_failed");
   });
 
-  it("classifies common Python-compatible error types", () => {
+  it("classifies common error types", () => {
     expect(classifyError({ error: "connection refused" })).toBe("bridge_down");
     expect(classifyError({ error: "timed out" })).toBe("timeout");
     expect(classifyError({ error: "selector not found" })).toBe("element_not_found");
@@ -179,7 +179,7 @@ describe("prompt rendering and dry-run files", () => {
 });
 
 describe("config, cooldown, and triggering", () => {
-  it("loads config with Python-compatible shallow merge", () => {
+  it("loads config with shallow merge", () => {
     const repoRoot = tempRepoRoot();
     writeFile(
       path.join(repoRoot, "config.json"),
@@ -252,6 +252,7 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(result.dry_run).toBe(true);
+    expect(result.status).toBe("dry_run");
     expect(existsSync(result.prompt_path)).toBe(true);
     expect(existsSync(path.join(repoRoot, "learnings/heals.jsonl"))).toBe(false);
     expect(runner.calls).toHaveLength(0);
@@ -270,6 +271,7 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(disabled.skipped).toBe(true);
+    expect(disabled.status).toBe("disabled");
     expect(disabled.reason).toContain("enabled");
 
     const knownRepo = tempRepoRoot();
@@ -288,6 +290,7 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(known.skipped).toBe(true);
+    expect(known.status).toBe("skipped");
     expect(known.reason).toBe("known_issue_matched");
   });
 
@@ -314,10 +317,12 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(result.success).toBe(true);
+    expect(result.status).toBe("success");
     expect(runner.calls[0]?.command[0]).toBe("mock-agent");
     expect(runner.calls[0]?.command[1]).toBe("orders");
     const events = await readJsonLinesFile(path.join(repoRoot, "learnings/heals.jsonl"));
     expect(HealEventSchema.parse(events[0]).event).toBe("triggered");
+    expect(HealEventSchema.parse(events[0]).status).toBe("success");
   });
 
   it("returns structured errors for runner failures", async () => {
@@ -336,6 +341,7 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(failed.success).toBe(false);
+    expect(failed.status).toBe("failed");
 
     const timeoutRepo = tempRepoRoot();
     const timedOut = await triggerHeal(
@@ -352,6 +358,22 @@ describe("config, cooldown, and triggering", () => {
       }
     );
     expect(timedOut.error).toBe("CLI timeout");
+    expect(timedOut.status).toBe("timeout");
+
+    const missingAgentRepo = tempRepoRoot();
+    const missingAgent = await triggerHeal(
+      { flow_id: "orders", error: "x", failed_step: { step_id: "extract" } },
+      {
+        repoRoot: missingAgentRepo,
+        dataRoot: path.join(missingAgentRepo, "data"),
+        clock: fixedClock,
+        config: testConfig({ agents: {}, agent: "missing" }),
+        agentRunner: new MockRunner()
+      }
+    );
+    expect(missingAgent.success).toBe(false);
+    expect(missingAgent.status).toBe("failed");
+    expect(missingAgent.error).toContain("missing");
   });
 
   it("default command runner reports success, failure, timeout, and command missing", async () => {

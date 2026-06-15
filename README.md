@@ -116,15 +116,8 @@ AGENTS.md                Agent 工作守则（沉淀规范 + 安全规则）
 
 | 文档 | 内容 |
 |------|------|
-| [docs/01-项目评审报告.md](docs/01-项目评审报告.md) | 历史问题评审与本次优化说明 |
 | [docs/02-架构设计.md](docs/02-架构设计.md) | 整体架构、模块职责、数据流 |
 | [docs/03-流程定义规范.md](docs/03-流程定义规范.md) | flow JSON 完整规范与沉淀 Checklist |
 | [docs/04-自愈机制与提示词模板.md](docs/04-自愈机制与提示词模板.md) | 自愈链路、模板定制、Agent CLI 配置 |
-| [docs/05-TS重构技术蓝图.md](docs/05-TS重构技术蓝图.md) | TypeScript/Node.js 分阶段迁移蓝图 |
-| [docs/06-TS迁移进度与路线图.md](docs/06-TS迁移进度与路线图.md) | TS 迁移状态、边界、验收与后续路线图 |
 | [docs/07-操作节奏与流程稳定性规划.md](docs/07-操作节奏与流程稳定性规划.md) | 操作节奏、限速、确认门槛与稳定性规划 |
 | [AGENTS.md](AGENTS.md) | 给 Agent 的工作守则 |
-
-## 回滚
-
-Python 历史实现通过 git 恢复（M7 前恢复点：commit `68d7db8a`，branch `develop`）。

@@ -15,7 +15,7 @@
 
 ## 技术栈与运行态
 
-本仓库已完成 M1-M7 TypeScript 迁移，Python 运行时已清零。生产入口为 `ziniao` CLI。
+生产入口为 `ziniao` CLI。
 
 - 运行时：Node.js LTS + TypeScript。
 - 包管理：`pnpm workspace`。
@@ -36,7 +36,7 @@ TS 代码同样受最高安全规则约束：
 - `packages/cli` 只能做命令行参数解析、命令编排、终端输出和 exit code；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则。
 - `apps/api` 只能做 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge。
 - `apps/web` 只能做 WebAdmin React 前端，通过 same-origin `/api/*` 访问 `apps/api`；不得直接访问 ZClaw bridge、不得读取 ZClaw API key、不得打开本机浏览器或引入浏览器自动化依赖。
-- 新增 TS 依赖和源码必须通过安全扫描（`pnpm security:scan`），阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令、Python 源码回归和绕过 ZClaw bridge 的可疑路径。
+- 新增 TS 依赖和源码必须通过安全扫描（`pnpm security:scan`），阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令和绕过 ZClaw bridge 的可疑路径。
 
 ## 你在本仓库的三种工作模式
 
@@ -100,4 +100,4 @@ TS 代码同样受最高安全规则约束：
 - 流程失败时引擎已自动处理自愈触发，不要在流程外再包一层重试脚本。
 - 临时数据文件允许，**禁止创建额外的可执行脚本文件**来绕过引擎完成任务（与 ziniao-assistant skill 的约定一致）。
 - 基线验证命令只能做静态解析、typecheck、单测和安全扫描；不得执行 `open_store`、`visit_page`、`execute_script` 或 `POST /zclaw/tools/invoke`。
-- 仓库内不应存在 `.py` 源文件或 `requirements.txt`；Python 历史实现通过 git 历史恢复（恢复点：`68d7db8a`，branch `develop`）。
+- 仓库内不应存在 `.py` 源文件或 `requirements.txt`。

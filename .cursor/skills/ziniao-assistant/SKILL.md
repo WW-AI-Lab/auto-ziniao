@@ -11,7 +11,7 @@ description: Operate Ziniao Browser (紫鸟) stores via the local ZClaw bridge, 
 
 - **所有浏览器操作只走 bridge**(`POST {baseUrl}/zclaw/tools/invoke`)。禁止本机浏览器(Chrome/Safari/Edge/Firefox)、Playwright/Selenium/Puppeteer/browser-use、`webbrowser` 模块、`open <url>` 命令。
 - **工具名零臆造**:`tool` 字段只能取自 `GET /zclaw/tools` 返回的名字。`navigate`、`open_url`、`goto`、`browse`、`run_script`、`screenshot`、`get_screenshot`、`execute_automation`、`call_store_tool` 等名字**不存在**,不要从通用自动化习惯里猜。打开 URL 只有两种方式:店铺已开用 `visit_page`;未开用 `open_store` + `launchUrl`。
-- **禁止创建或运行脚本文件**(`.sh`/`.py`/`.js` 等)来完成任务。临时数据文件允许;沉淀体系内的 flow JSON 与 `extracts/*.js` 是数据文件,允许写入。现有工具做不到的事,如实报告限制,不要绕道脚本。
+- **禁止创建或运行脚本文件**(`.sh`/`.py`/`.js` 等)来完成任务。临时数据文件允许;flow 与 extract 的沉淀写入只通过 WebAdmin API 完成,不要直接写仓库内 flow/extract 文件。现有工具做不到的事,如实报告限制,不要绕道脚本。
 - **遇阻即停**:invoke 连接拒绝/超时无响应、必需工具调用报错导致任务不可行、必需资源缺失(店铺不存在、API key 缺失)时——立即停止并结束回合。不重试同一请求、不读代码诊断、不写「等 bridge 恢复后再执行」的后续计划。bridge 不可达 = 紫鸟客户端没开,属环境问题。
 
 ## 调用方式
@@ -92,9 +92,9 @@ curl -X POST http://127.0.0.1:9482/api/traces \
 多步 bridge 任务跑通后,**不要直接结束回合**,先判断是否值得沉淀:
 
 - **应当沉淀**:产出数据(报表/订单/库存等)且未来会再查;是固定操作序列(切换设置、批量检查、定期导出);用户说 沉淀/固化/保存流程。
-- **不必沉淀**:临时看一眼、探索性诊断、任务失败、`flows/` 已有等价流程(此时更新现有 flow 并 version +1,不新建重复流程)。
+- **不必沉淀**:临时看一眼、探索性诊断、任务失败、已有等价流程(此时通过 WebAdmin API 更新现有 flow 并 version +1,不新建重复流程)。
 
-判断为应当沉淀时:用户在场就先一句话提议并立即动手,不要只提议不动手。然后**读本 skill 目录下的 `references/flow-distill.md`**,按其中的完整工作流执行(脚手架命令、flow 编写规范、验收门槛、检查清单)。刚验证过的 URL、选择器、踩坑经验只存在于本会话,不写盘就永久丢失。
+判断为应当沉淀时:用户在场就先一句话提议并立即动手,不要只提议不动手。然后**读本 skill 目录下的 `references/flow-distill.md`**,按其中的 API-first 工作流执行(创建 flow、上传 extract、校验、运行、确认产出)。不要直接读写仓库内 flow/extract 文件,不要调用 CLI 作为沉淀步骤。刚验证过的 URL、选择器、踩坑经验只存在于本会话,不通过 WebAdmin API 固化就会丢失。
 
 ## Gotchas(踩坑速查)
 

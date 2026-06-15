@@ -2,6 +2,90 @@ import { z } from "zod";
 import { RunLogEntrySchema } from "./runtime-data.js";
 
 const UnknownRecordSchema = z.record(z.unknown());
+const NullableUnknownRecordSchema = UnknownRecordSchema.nullable().optional();
+
+export const HealSummarySchema = z
+  .object({
+    status: z
+      .enum(["not_triggered", "triggered", "skipped", "success", "failed", "timeout", "dry_run", "disabled"])
+      .or(z.string()),
+    heal_id: z.string().optional(),
+    error_type: z.string().optional(),
+    agent: z.string().optional(),
+    reason: z.string().optional(),
+    error: z.string().optional(),
+    prompt_path: z.string().optional(),
+    heal_log_path: z.string().optional(),
+    context_available: z.boolean().optional(),
+    prompt_available: z.boolean().optional(),
+    detail_url: z.string().optional()
+  })
+  .passthrough();
+
+export const OutputRefSchema = z
+  .object({
+    name: z.string(),
+    path: z.string(),
+    type: z.enum(["file", "dir"]).or(z.string()).optional(),
+    size: z.number().int().nonnegative().optional(),
+    available: z.boolean().default(true),
+    preview_url: z.string().optional(),
+    download_url: z.string().optional()
+  })
+  .passthrough();
+
+export const FailedStepSchema = z
+  .object({
+    step_id: z.string().optional(),
+    tool: z.string().optional(),
+    action: z.string().optional(),
+    args: z.unknown().optional(),
+    heal_context: z.string().optional(),
+    error: z.string().optional()
+  })
+  .passthrough();
+
+export const FlowRunSourceSchema = z.enum(["manual", "schedule", "history"]).or(z.string());
+
+export const FlowRunHistoryItemSchema = z
+  .object({
+    run_id: z.string(),
+    token: z.string().optional(),
+    source: FlowRunSourceSchema.default("history"),
+    flow_id: z.string(),
+    schedule_id: z.string().nullable().optional(),
+    schedule_run_id: z.number().nullable().optional(),
+    params: UnknownRecordSchema.default({}),
+    status: z.enum(["running", "success", "failed", "timeout", "skipped", "error", "exhausted"]).or(z.string()),
+    started_at: z.string().optional(),
+    finished_at: z.string().nullable().optional(),
+    timestamp: z.string().optional(),
+    duration_ms: z.number().nullable().optional(),
+    exit_code: z.number().nullable().optional(),
+    error: z.string().nullable().optional(),
+    failed_step: FailedStepSchema.nullable().optional(),
+    data_summary: UnknownRecordSchema.default({}),
+    output_refs: z.array(OutputRefSchema).default([]),
+    heal_summary: HealSummarySchema.nullable().optional(),
+    detail_available: z.boolean().default(true)
+  })
+  .passthrough();
+
+export const FlowRunDetailSchema = FlowRunHistoryItemSchema.extend({
+  result: z.unknown().optional(),
+  heal_result: z.unknown().optional(),
+  heal_events: z.array(UnknownRecordSchema).default([]),
+  heal_context: NullableUnknownRecordSchema,
+  heal_prompt: z
+    .object({
+      path: z.string().optional(),
+      available: z.boolean().default(false)
+    })
+    .passthrough()
+    .nullable()
+    .optional(),
+  log_entry: RunLogEntrySchema.nullable().optional()
+}).passthrough();
 
 export const ScheduleTriggerSchema = z
   .discriminatedUnion("type", [
@@ -15,11 +99,14 @@ export const ScheduleRunSchema = z
   .object({
     id: z.number().optional(),
     schedule_id: z.string(),
+    run_id: z.string().nullable().optional(),
     fired_at: z.string(),
     status: z.enum(["success", "failed", "timeout", "skipped"]).or(z.string()),
     exit_code: z.number().nullable().optional(),
     duration_ms: z.number().nullable().optional(),
-    error: z.string().nullable().optional()
+    error: z.string().nullable().optional(),
+    flow_status: z.string().nullable().optional(),
+    heal_summary: HealSummarySchema.nullable().optional()
   })
   .passthrough();
 
@@ -133,9 +220,49 @@ export const FlowDetailSchema = z
   })
   .passthrough();
 
+export const CreateFlowRequestSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(),
+    content: z.string().optional()
+  })
+  .passthrough();
+
+export const CreateFlowResponseSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    content: z.string(),
+    created: z.boolean().default(true),
+    warnings: z.array(z.string()).default([])
+  })
+  .passthrough();
+
+export const SaveExtractRequestSchema = z
+  .object({
+    content: z.string()
+  })
+  .passthrough();
+
+export const ExtractDetailSchema = z
+  .object({
+    name: z.string(),
+    path: z.string(),
+    exists: z.boolean(),
+    content: z.string().nullable()
+  })
+  .passthrough();
+
+export const FlowTemplateResponseSchema = z
+  .object({
+    content: z.string()
+  })
+  .passthrough();
+
 export const ManualRunStatusSchema = z
   .object({
     token: z.string(),
+    run_id: z.string().optional(),
     flow_id: z.string(),
     params: UnknownRecordSchema.default({}),
     status: z.enum(["running", "success", "failed", "timeout", "skipped", "error"]).or(z.string()),
@@ -145,7 +272,8 @@ export const ManualRunStatusSchema = z
     duration_ms: z.number().nullable().optional(),
     output: z.string().optional(),
     error: z.string().nullable().optional(),
-    heal: z.unknown().optional()
+    heal: z.unknown().optional(),
+    heal_summary: HealSummarySchema.nullable().optional()
   })
   .passthrough();
 
@@ -184,6 +312,7 @@ export const HealEntrySchema = z
     heal_id: z.string().optional(),
     timestamp: z.string().optional(),
     event: z.string().optional(),
+    status: z.string().optional(),
     flow_id: z.string().optional(),
     step_id: z.string().optional(),
     error_type: z.string().optional(),
@@ -244,6 +373,11 @@ export const ChatSseEventSchema = z
 
 export type Schedule = z.infer<typeof ScheduleSchema>;
 export type ScheduleRun = z.infer<typeof ScheduleRunSchema>;
+export type HealSummary = z.infer<typeof HealSummarySchema>;
+export type OutputRef = z.infer<typeof OutputRefSchema>;
+export type FailedStep = z.infer<typeof FailedStepSchema>;
+export type FlowRunHistoryItem = z.infer<typeof FlowRunHistoryItemSchema>;
+export type FlowRunDetail = z.infer<typeof FlowRunDetailSchema>;
 export type ChatToolCall = z.infer<typeof ChatToolCallSchema>;
 export type ChatExtras = z.infer<typeof ChatExtrasSchema>;
 export type ChatSession = z.infer<typeof ChatSessionSchema>;
@@ -252,6 +386,11 @@ export type ChatAgentInfo = z.infer<typeof ChatAgentInfoSchema>;
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 export type FlowSummary = z.infer<typeof FlowSummarySchema>;
 export type FlowDetail = z.infer<typeof FlowDetailSchema>;
+export type CreateFlowRequest = z.infer<typeof CreateFlowRequestSchema>;
+export type CreateFlowResponse = z.infer<typeof CreateFlowResponseSchema>;
+export type SaveExtractRequest = z.infer<typeof SaveExtractRequestSchema>;
+export type ExtractDetail = z.infer<typeof ExtractDetailSchema>;
+export type FlowTemplateResponse = z.infer<typeof FlowTemplateResponseSchema>;
 export type ManualRunStatus = z.infer<typeof ManualRunStatusSchema>;
 export type RunEntry = z.infer<typeof RunLogEntrySchema>;
 export type OutputFileEntry = z.infer<typeof OutputFileEntrySchema>;

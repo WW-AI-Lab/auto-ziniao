@@ -17,8 +17,7 @@
     ],
     "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
     "actions": ["save_json", "sleep"],
-    "extractRefs": ["@extracts/extract_account_health.js", "@extracts/nav_account_health_menu.js"],
-    "pythonValidate": { "errors": 0, "warnings": 0 }
+    "extractRefs": ["@extracts/extract_account_health.js", "@extracts/nav_account_health_menu.js"]
   },
   "inventory_check": {
     "id": "inventory_check",
@@ -36,8 +35,7 @@
     ],
     "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
     "actions": ["save_json", "sleep"],
-    "extractRefs": ["@extracts/extract_inventory.js"],
-    "pythonValidate": { "errors": 0, "warnings": 0 }
+    "extractRefs": ["@extracts/extract_inventory.js"]
   },
   "orders_overview": {
     "id": "orders_overview",
@@ -55,8 +53,7 @@
     ],
     "tools": ["close_store", "execute_script", "list_stores", "open_store", "visit_page"],
     "actions": ["save_json", "sleep"],
-    "extractRefs": ["@extracts/extract_orders_overview.js"],
-    "pythonValidate": { "errors": 0, "warnings": 0 }
+    "extractRefs": ["@extracts/extract_orders_overview.js"]
   },
   "switch_language": {
     "id": "switch_language",
@@ -84,8 +81,7 @@
       "@extracts/click_settings_button.js",
       "@extracts/click_target_language.js",
       "@extracts/detect_language.js"
-    ],
-    "pythonValidate": { "errors": 0, "warnings": 0 }
+    ]
   },
   "webadmin_selftest": {
     "id": "webadmin_selftest",
@@ -95,7 +91,6 @@
     "stepIds": ["say", "wait", "done"],
     "tools": [],
     "actions": ["print", "sleep"],
-    "extractRefs": [],
-    "pythonValidate": { "errors": 0, "warnings": 0 }
+    "extractRefs": []
   }
 }

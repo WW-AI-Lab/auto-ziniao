@@ -4,13 +4,22 @@ import {
   ApiErrorResponseSchema,
   ChatAgentInfoSchema,
   ChatSseEventSchema,
+  CreateFlowRequestSchema,
+  CreateFlowResponseSchema,
+  ExtractDetailSchema,
+  FlowRunDetailSchema,
+  FlowRunHistoryItemSchema,
   FlowDetailSchema,
   FlowSummarySchema,
+  FlowTemplateResponseSchema,
   HealDetailSchema,
   HealEntrySchema,
+  HealSummarySchema,
   ManualRunStatusSchema,
+  OutputRefSchema,
   OutputDirectorySchema,
   OutputPreviewSchema,
+  SaveExtractRequestSchema,
   ScheduleRunSchema,
   ScheduleSchema,
   WebAdminStatsSchema
@@ -51,9 +60,18 @@ describe("webadmin api schemas", () => {
   it("parses flow, output, run status and SSE DTOs", () => {
     expect(FlowSummarySchema.parse({ id: "orders", name: "订单", params: {}, extra: 1 }).extra).toBe(1);
     expect(FlowDetailSchema.parse({ id: "orders", content: "{}", extracts: [] }).extracts).toEqual([]);
-    expect(ManualRunStatusSchema.parse({ token: "t", flow_id: "orders", status: "running" }).params).toEqual({});
+    const manual = ManualRunStatusSchema.parse({
+      token: "t",
+      run_id: "run_1",
+      flow_id: "orders",
+      status: "running",
+      heal_summary: { status: "not_triggered" }
+    });
+    expect(manual.params).toEqual({});
+    expect(manual.run_id).toBe("run_1");
     expect(OutputDirectorySchema.parse({ path: "", dirs: [], files: [{ name: "a.json", size: 1 }] }).files[0]?.name).toBe("a.json");
     expect(OutputPreviewSchema.parse({ size: 1, content: "ok" }).content).toBe("ok");
+    expect(OutputRefSchema.parse({ name: "a.json", path: "a.json" }).available).toBe(true);
     expect(ChatAgentInfoSchema.parse({ name: "mock", timeout_sec: 1 }).name).toBe("mock");
     expect(ChatSseEventSchema.parse({ type: "delta", text: "hi" }).type).toBe("delta");
     expect(ChatSseEventSchema.parse({ type: "reasoning_delta", text: "thinking" }).type).toBe("reasoning_delta");
@@ -77,11 +95,89 @@ describe("webadmin api schemas", () => {
     expect(stats.flows[0]?.heal_count).toBe(1);
   });
 
+  it("parses WebAdmin flow run observability DTOs", () => {
+    const success = FlowRunHistoryItemSchema.parse({
+      run_id: "run_success",
+      source: "manual",
+      flow_id: "account_health",
+      params: { store_name: "demo" },
+      status: "success",
+      started_at: "2026-06-15T00:00:00.000Z",
+      duration_ms: 12,
+      data_summary: { save: "1 rows" },
+      output_refs: [{ name: "health.json", path: "account_health/health.json" }]
+    });
+    expect(success.output_refs[0]?.available).toBe(true);
+    expect(success.detail_available).toBe(true);
+
+    const failed = FlowRunDetailSchema.parse({
+      run_id: "run_failed",
+      token: "token1",
+      source: "schedule",
+      flow_id: "account_health",
+      schedule_id: "sched1",
+      schedule_run_id: 3,
+      status: "failed",
+      error: "extract failed",
+      failed_step: { step_id: "extract_health", tool: "execute_script" },
+      heal_summary: {
+        status: "triggered",
+        heal_id: "heal_account_health_1",
+        error_type: "extract_failed",
+        agent: "openclaw",
+        prompt_path: "/tmp/prompt.md",
+        heal_log_path: "/tmp/context.json"
+      },
+      heal_events: [{ event: "triggered", heal_id: "heal_account_health_1" }],
+      heal_context: null,
+      result: { status: "failed" }
+    });
+    expect(failed.failed_step?.step_id).toBe("extract_health");
+    expect(failed.heal_summary?.agent).toBe("openclaw");
+
+    const missing = FlowRunDetailSchema.parse({
+      run_id: "history_local_t",
+      source: "history",
+      flow_id: "local",
+      status: "failed",
+      data_summary: {},
+      output_refs: [],
+      detail_available: false,
+      heal_summary: { status: "failed", error: "context missing", context_available: false }
+    });
+    expect(missing.detail_available).toBe(false);
+
+    expect(HealSummarySchema.parse({ status: "skipped", reason: "known_issue_matched" }).reason).toBe("known_issue_matched");
+    expect(HealSummarySchema.parse({ status: "failed", error: "Agent CLI timeout" }).status).toBe("failed");
+  });
+
   it("parses stable error response without requiring stack or secret", () => {
     const parsed = ApiErrorResponseSchema.parse({
       error: { code: "bad_request", message: "请求错误" }
     });
     expect(parsed.error.code).toBe("bad_request");
     expect(JSON.stringify(parsed)).not.toContain("secret");
+  });
+
+  it("parses flow authoring DTOs", () => {
+    const request = CreateFlowRequestSchema.parse({
+      id: "sample_flow",
+      name: "样例流程",
+      content: "{\"id\":\"sample_flow\"}"
+    });
+    expect(request.id).toBe("sample_flow");
+    expect(request.content).toContain("sample_flow");
+
+    const response = CreateFlowResponseSchema.parse({
+      id: "sample_flow",
+      name: "样例流程",
+      content: "{}"
+    });
+    expect(response.created).toBe(true);
+    expect(response.warnings).toEqual([]);
+
+    expect(SaveExtractRequestSchema.parse({ content: "(() => JSON.stringify({ ok: true }))();" }).content).toContain("JSON");
+    expect(ExtractDetailSchema.parse({ name: "sample.js", path: "extracts/sample.js", exists: false, content: null }).content).toBeNull();
+    expect(FlowTemplateResponseSchema.parse({ content: "{}" }).content).toBe("{}");
   });
 });

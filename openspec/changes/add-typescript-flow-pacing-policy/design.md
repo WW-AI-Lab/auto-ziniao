@@ -1,13 +1,12 @@
 ## Context
 
-当前 TS 迁移已完成 M1/M2/M3：`packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine` 已存在，`packages/flow-engine` 已能在 mock tool client 下执行 flow DSL，并具备 `sleeper`、`clock`、`toolClient`、`logger`、临时 `dataRoot` 等可注入测试点。当前活动 change `add-typescript-self-heal` 正在迁移 M4 自愈链路，本 change 不抢占 self-heal 范围。
+当前 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine` 已存在，`packages/flow-engine` 已能在 mock tool client 下执行 flow DSL，并具备 `sleeper`、`clock`、`toolClient`、`logger`、临时 `dataRoot` 等可注入测试点。`packages/self-heal` 自愈链路已就位，本 change 不抢占 self-heal 范围。
 
 现有操作节奏能力主要来自 flow 作者手写的 `sleep`、`timeoutMs`、`retry.delayMs` 和 `on_fail.retry.delayMs`。这些能力能解决页面加载等待和失败重试，但无法统一表达 step 风险等级、写操作确认、同店铺串行、每日预算、连续失败熔断或 pacing 事件。`docs/07-操作节奏与流程稳定性规划.md` 已完成研究评估，本 change 将其中可实现的 TS 目标态能力沉淀为 OpenSpec artifacts。
 
 约束：
 
-- 只面向迁移后的 TypeScript 架构。
-- 不修改 Python 生产入口：`manager.py`、`engine/flow_engine.py`、`engine/self_heal.py`、`engine/zclaw_client.py` 均不在本 change 内修改。
+- 只面向 TypeScript 架构。
 - 不改变 `packages/zclaw` 职责，不在 ZClaw client 中隐式节流。
 - 默认验证离线，不调用真实 ZClaw bridge、不打开店铺浏览器、不调用真实 Agent CLI。
 - 新字段必须兼容历史 flow：旧 flow 不声明 pacing 时仍可解析和离线执行。
@@ -24,13 +23,11 @@
   - 提供同一进程内的 per-store/per-flow 串行保护和预算拒绝；
   - 记录 pacing/confirm/budget runtime events。
 - 增加静态校验和离线测试，确保 pacing 能力在 `pnpm validate:baseline` 中可验证。
-- 更新文档，明确这是 TS 目标态能力，不要求 Python 兼容实现。
+- 更新文档，明确 pacing 能力的契约与边界。
 
 **Non-Goals:**
 
-- 不给 Python engine 增加 pacing runtime。
-- 不迁移 CLI，不替换 `python3 manager.py ...`。
-- 不迁移 WebAdmin，不实现 WebAdmin 的确认 UI。
+- 不实现 WebAdmin 的确认 UI。
 - 不修改 `packages/self-heal`；只保证事件和失败结果可被后续 self-heal 消费。
 - 不新增数据库、daemon、外部服务或第三方运行依赖。
 - 不实现低层鼠标轨迹、随机鼠标或任何 ZClaw 工具清单之外的工具。
@@ -96,17 +93,17 @@
 
 3. **默认强制所有操作声明 `risk` vs warning 渐进**
    - 选择渐进：缺失 `risk` 给 warning；`critical` 缺 confirm 才 error。
-   - 理由：历史 flow 较多，直接强制会阻断迁移后的 baseline；warning 可以推动新 flow 最佳实践。
+   - 理由：历史 flow 较多，直接强制会破坏 baseline；warning 可以推动新 flow 最佳实践。
    - 替代方案：所有 `click_element` / `input_text` 必须声明 `risk`。规范更严格，但会让现有 flow 需要一次性大量修改。
 
 4. **跨进程持久化锁 vs 进程内锁**
    - 选择进程内锁作为本 change 的最小实现。
-   - 理由：当前 TS CLI 尚未迁移，WebAdmin 调度未迁移；跨进程锁需要文件锁或 SQLite 协议，超出本 change 目标。
+   - 理由：当前 CLI/WebAdmin 调度尚在演进中；跨进程锁需要文件锁或 SQLite 协议，超出本 change 目标。
    - 替代方案：直接引入文件锁。能覆盖多进程，但新增锁文件生命周期和异常释放复杂度，应留到 CLI/WebAdmin 调度接入时评估。
 
 5. **confirm gate 用 CLI 交互 vs 参数授权**
    - 选择参数授权：例如 `confirm.allowParam: "allow_critical"`，运行参数显式为 truthy 才允许执行。
-   - 理由：本阶段不迁移 CLI，也不实现 WebAdmin UI；参数授权可离线测试、可被未来 CLI/WebAdmin 复用。
+   - 理由：CLI/WebAdmin 交互界面尚在演进中；参数授权可离线测试、可被未来 CLI/WebAdmin 复用。
    - 替代方案：在 flow-engine 中读取 stdin 交互确认。会污染库层职责，也难以在 baseline 中稳定测试。
 
 6. **jitter 默认启用 vs 默认关闭**
@@ -132,7 +129,6 @@
 
 - 不新增第三方依赖。
 - 不新增数据库或外部服务。
-- 不修改 Python 生产链路。
 - 不在 `packages/zclaw` 放业务状态。
 - 先做进程内锁和离线测试，持久化锁留到 CLI/WebAdmin 接入阶段。
 - 所有新增行为都有 schema、单测和 baseline 覆盖。
@@ -152,10 +148,10 @@
    - 替代方案：复用 `learnings/heals.jsonl` 或 `runs.jsonl`。当前选择保持 self-heal 事件和 run 摘要职责清晰。
 
 5. 同店铺串行先做进程内实现，默认 key 为 `storeId`，缺失时用 `params.store_id`、`params.store_name` 或 `"unknown"`。
-   - 替代方案：立刻使用 SQLite/file lock。当前选择避免在未迁移 CLI/WebAdmin 前引入跨进程锁复杂度。
+   - 替代方案：立刻使用 SQLite/file lock。当前选择避免在 CLI/WebAdmin 调度接入前引入跨进程锁复杂度。
 
-6. pacing runtime 默认只在 TS flow-engine 生效；Python 引擎不兼容实现。
-   - 替代方案：同步给 Python 做最小支持。用户已明确本方案只针对迁移后的 TS 架构，且 Python 即将被后续迁移替代。
+6. pacing runtime 在 flow-engine 执行层统一实现。
+   - 替代方案：在各上层（CLI/WebAdmin）分别实现。当前选择保证 pacing 行为一致且可测试。
 
 ## Risks / Trade-offs
 
@@ -165,7 +161,7 @@
 - [Risk] confirm/budget failure 与 `on_fail.retry` 语义冲突 -> Mitigation：把 confirm/budget 拒绝定义为 policy rejection，默认不可 retry；单测覆盖。
 - [Risk] jitter 导致测试不稳定 -> Mitigation：默认关闭或测试注入 deterministic random；baseline 不依赖真实时间。
 - [Risk] self-heal 后续误把 confirm reject 当成可自动修复错误 -> Mitigation：事件和失败 code 使用 `confirm_rejected` / `budget_rejected`，文档说明 self-heal 不应自动绕过确认。
-- [Risk] 新字段被 Python validate 忽略或 passthrough -> Mitigation：本 change 明确不要求 Python 识别；TS schema 负责目标态校验。
+- [Risk] 新字段被旧校验逻辑忽略或 passthrough -> Mitigation：TS schema 负责目标态校验，历史字段 optional 兼容。
 
 ## Migration Plan
 
@@ -194,7 +190,6 @@
    - 确认 `packages/flow-engine` 仍不直接访问 `9481` 或 `/zclaw/*`。
 6. 更新文档：
    - `docs/03-流程定义规范.md` 增补 pacing/risk/confirm。
-   - `docs/06-TS迁移进度与路线图.md` 说明该 change 是 TS 目标态扩展，不改变 Python。
    - `docs/07-操作节奏与流程稳定性规划.md` 标记 OpenSpec change。
    - README/AGENTS 同步边界。
 7. 验证：
@@ -203,11 +198,9 @@
    - `pnpm build`
    - `pnpm validate:baseline`
    - `pnpm security:scan`
-   - `python3 manager.py list`
-   - `python3 manager.py validate orders_overview`
    - `openspec validate add-typescript-flow-pacing-policy --strict`
 
-回滚方式：删除本 change 对 `packages/schemas`、`packages/flow-engine`、测试、文档和 root scripts 的修改；删除 `data/logs/flow_events.jsonl` 试运行产物（如有）。Python 生产链路未改，回滚后验证 `python3 manager.py list` 与 `python3 manager.py validate orders_overview`。
+回滚方式：删除本 change 对 `packages/schemas`、`packages/flow-engine`、测试、文档和 root scripts 的修改；删除 `data/logs/flow_events.jsonl` 试运行产物（如有）。
 
 ## Open Questions
 
