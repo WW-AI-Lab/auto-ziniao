@@ -1,0 +1,60 @@
+{
+  "说明": "输出质量测试用例,按 docs/evaluating-skills.md 的方法使用:每个用例分别在「加载本 skill」与「不加载」两种配置下运行,对照 assertions 逐条记 PASS/FAIL(要有具体证据)。运行需要紫鸟客户端在本机开启。",
+  "cases": [
+    {
+      "id": "open-store-and-visit",
+      "prompt": "打开 Rosehut 店铺,进到卖家后台首页,告诉我页面上有没有新消息提醒",
+      "expected_output": "通过 bridge 完成:一次 list_stores 或 resolve_store、一次 open_store(带 launchUrl 或后接 visit_page),读取页面内容后给出结论",
+      "assertions": [
+        "全程未打开本机浏览器,未使用 Playwright/Selenium 等",
+        "list_stores 至多调用一次,open_store 恰好一次",
+        "每个 invoke 请求都携带 API key",
+        "tool 字段全部来自 GET /zclaw/tools 返回的名字,无臆造",
+        "成功的 invoke 被追加到 data/logs/traces/<日期>.jsonl"
+      ]
+    },
+    {
+      "id": "multi-subitem-report",
+      "prompt": "帮我看一下店里各种订单类型(待付款/待发货/已发货/退款中)分别有多少单",
+      "expected_output": "逐个订单类型分别查看后汇总,而不是看了一两类就推断其余",
+      "assertions": [
+        "每种订单类型都有对应的页面访问或查询动作",
+        "结论中每个数字都能对应到一次真实的页面读取",
+        "任务跑通后主动提议或执行沉淀(任务有重复价值)"
+      ]
+    },
+    {
+      "id": "distill-after-success",
+      "prompt": "(接上一个跑通的导出任务)把这个流程沉淀下来",
+      "expected_output": "读取 references/flow-distill.md 后,创建 flow、按规范填写、validate + run --no-heal 真机验收并报告产出路径",
+      "assertions": [
+        "执行了 python3 manager.py new 创建脚手架",
+        "flow 声明了 params(至少 store_name),无硬编码店铺名/日期",
+        "提取 JS 外置到 extracts/,IIFE 包裹,无 JS 模板字符串",
+        "heal.hints 含本次会话的真实探索经验(非泛泛而谈)",
+        "validate 与 run -v --no-heal 均真实执行且通过",
+        "向用户报告了 flow_id、产出文件路径和重跑命令"
+      ]
+    },
+    {
+      "id": "bridge-down-stop",
+      "prompt": "列一下我的店铺(此用例需在紫鸟客户端关闭时运行)",
+      "expected_output": "发现 bridge 连接拒绝后立即停止并结束回合",
+      "assertions": [
+        "未重试同一请求",
+        "未尝试读引擎代码、写脚本或改用本机浏览器绕过",
+        "未生成「等 bridge 恢复后执行」的后续计划"
+      ]
+    },
+    {
+      "id": "api-key-via-conversation",
+      "prompt": "我的 API key 是 znoc_test123,配置一下然后列出店铺",
+      "expected_output": "key 合并写入 ~/.zclaw/config.json 后,立即用新 key 调 list_stores",
+      "assertions": [
+        "~/.zclaw/config.json 中 ZCLAW_API_KEY 被更新且其它字段保留",
+        "后续 invoke 立即使用了新 key,未等待重载",
+        "未创建脚本文件来写配置"
+      ]
+    }
+  ]
+}

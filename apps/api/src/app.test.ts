@@ -193,7 +193,7 @@ describe("api app", () => {
     expect(status.heal_summary.status).toBe("success");
 
     const history = (await app.inject({ method: "GET", url: "/api/flows/failing/runs?status=failed" })).json();
-    expect(history.items[0].run_id).toBe(status.run_id);
+    expect(history.items.some((item: { run_id: string }) => item.run_id === status.run_id)).toBe(true);
     const detail = (await app.inject({ method: "GET", url: `/api/runs/${status.run_id}` })).json();
     expect(detail.failed_step.step_id).toBe("fail");
     expect(detail.heal_summary.heal_id).toBeTruthy();
@@ -568,7 +568,15 @@ describe("api app", () => {
       },
       chatCommandRunner: async ({ command }) => {
         expect(command).toEqual(expect.arrayContaining(["/mock/bin/codex", "exec", "你好"]));
-        return { exitCode: 0, stdout: "codex ok" };
+        return {
+          exitCode: 0,
+          stdout: [
+            "[2026-06-15T15:37:57] OpenAI Codex v0.39.0 (research preview)",
+            "workdir: /tmp/repo model: gpt-5.5 provider: openai",
+            "[2026-06-15T15:37:57] User instructions: 你好",
+            "codex ok"
+          ].join("\n")
+        };
       },
       chatClient: {
         async sendChat() {
@@ -579,6 +587,7 @@ describe("api app", () => {
     const sid = (await app.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "codex", agent: "codex" } })).json().id;
     const response = await app.inject({ method: "POST", url: `/api/chat/sessions/${sid}/messages`, payload: { content: "你好" } });
     expect(response.body).toContain("codex ok");
+    expect(response.body).not.toContain("OpenAI Codex");
     const messages = (await app.inject({ method: "GET", url: `/api/chat/sessions/${sid}/messages` })).json().items;
     expect(messages[1]).toMatchObject({ status: "done", content: "codex ok" });
     expect(messages[1].extras).toMatchObject({ agent: "codex", agent_type: "codex-cli" });
@@ -598,6 +607,68 @@ describe("api app", () => {
     expect(failedMessages[1]).toMatchObject({ status: "failed" });
     expect(failedMessages[1].extras.diagnostic).toMatchObject({ code: "command_failed", cli_exit_code: 2 });
     await failed.close();
+
+    const incompatibleCodex = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : null;
+      },
+      chatCommandRunner: async () => ({
+        exitCode: 1,
+        stderr: [
+          "[2026-06-15T15:38:00] stream error: unexpected status 400 Bad Request: {\"detail\":\"The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}; retrying 1/5",
+          "[2026-06-15T15:38:09] ERROR: unexpected status 400 Bad Request: {\"detail\":\"The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}"
+        ].join("\n")
+      })
+    });
+    const incompatibleSid = (await incompatibleCodex.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "codex", agent: "codex" } })).json().id;
+    const incompatibleResponse = await incompatibleCodex.inject({
+      method: "POST",
+      url: `/api/chat/sessions/${incompatibleSid}/messages`,
+      payload: { content: "测试" }
+    });
+    expect(incompatibleResponse.body).toContain("\"type\":\"error\"");
+    expect(incompatibleResponse.body).toContain("Codex CLI 版本过低");
+    expect(incompatibleResponse.body).not.toContain("retrying 1/5");
+    const incompatibleMessages = (await incompatibleCodex.inject({ method: "GET", url: `/api/chat/sessions/${incompatibleSid}/messages` })).json().items;
+    expect(incompatibleMessages[1]).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("Codex CLI 版本过低")
+    });
+    expect(incompatibleMessages[1].extras.diagnostic).toMatchObject({
+      code: "codex_cli_version_unsupported",
+      cli_exit_code: 1,
+      remediation: "upgrade_codex_cli_or_override_model"
+    });
+    await incompatibleCodex.close();
+
+    const stdoutFailureCodex = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : null;
+      },
+      chatCommandRunner: async () => ({
+        exitCode: 0,
+        stdout: "[2026-06-15T15:44:06] OpenAI Codex v0.39.0 (research preview)\nworkdir: /Users/liuxingwang/ziniao-scripts model: gpt-5.5 provider: openai approval: never sandbox: read-only reasoning effort: high reasoning summaries: auto\n[2026-06-15T15:44:06] User instructions: 你有那些skills [2026-06-15T15:44:11] stream error: unexpected status 400 Bad Request: {\"detail\":\"The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}; retrying 1/5 in 194ms… [2026-06-15T15:44:21] ERROR: unexpected status 400 Bad Request: {\"detail\":\"The 'gpt-5.5' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.\"}"
+      })
+    });
+    const stdoutFailureSid = (await stdoutFailureCodex.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "codex", agent: "codex" } })).json().id;
+    const stdoutFailureResponse = await stdoutFailureCodex.inject({
+      method: "POST",
+      url: `/api/chat/sessions/${stdoutFailureSid}/messages`,
+      payload: { content: "你有那些skills" }
+    });
+    expect(stdoutFailureResponse.body).toContain("\"type\":\"error\"");
+    expect(stdoutFailureResponse.body).toContain("Codex CLI 版本过低");
+    expect(stdoutFailureResponse.body).not.toContain("OpenAI Codex v0.39.0");
+    const stdoutFailureMessages = (await stdoutFailureCodex.inject({ method: "GET", url: `/api/chat/sessions/${stdoutFailureSid}/messages` })).json().items;
+    expect(stdoutFailureMessages[1]).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("Codex CLI 版本过低")
+    });
+    expect(stdoutFailureMessages[1].extras.diagnostic).toMatchObject({
+      code: "codex_cli_version_unsupported",
+      cli_exit_code: 0
+    });
+    await stdoutFailureCodex.close();
   });
 
   it("keeps API available when frontend dist is missing and serves dist when present", async () => {

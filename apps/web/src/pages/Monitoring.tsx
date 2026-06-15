@@ -56,7 +56,7 @@ function RunsTab() {
   }, [load])
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
+    <Space orientation="vertical" style={{ width: '100%' }}>
       <Space>
         <Select
           allowClear
@@ -121,7 +121,7 @@ function HealsTab() {
   }, [load])
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
+    <Space orientation="vertical" style={{ width: '100%' }}>
       <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
       <Table
         rowKey={(r, i) => `${r.heal_id ?? i}`}
@@ -257,7 +257,7 @@ function OutputsTab() {
   const crumbs = ['output', ...path.split('/').filter(Boolean)]
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
+    <Space orientation="vertical" style={{ width: '100%' }}>
       <Breadcrumb
         items={crumbs.map((seg, i) => ({
           title: (

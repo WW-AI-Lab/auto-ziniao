@@ -1,17 +1,17 @@
 {
   "name": "@ww-ai-lab/auto-ziniao",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "CLI for reusable ZClaw-based Ziniao store-operation flows.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/ww-ai-lab/auto-ziniao/issues"
+    "url": "https://github.com/WW-AI-Lab/auto-ziniao/issues"
   },
-  "homepage": "https://github.com/ww-ai-lab/auto-ziniao#readme",
+  "homepage": "https://github.com/WW-AI-Lab/auto-ziniao#readme",
   "keywords": [
     "auto-ziniao",
     "zclaw",

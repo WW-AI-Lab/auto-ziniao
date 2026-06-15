@@ -78,7 +78,7 @@ function ToolCallList({ tools }: { tools: ChatToolCall[] }) {
       <Typography.Text type="secondary" className="zn-rich-message__section-label">
         工具调用
       </Typography.Text>
-      <Space direction="vertical" size={6} className="zn-rich-message__tool-list">
+      <Space orientation="vertical" size={6} className="zn-rich-message__tool-list">
         {tools.map((tool, index) => (
           <div className="zn-rich-message__tool" key={tool.id ?? `${tool.name}-${index}`}>
             <Tag icon={toolStatusIcon(tool.status)} color={toolStatusColor(tool.status)} className="zn-rich-message__tool-name">
@@ -176,7 +176,7 @@ function A2UIRenderer({ blocks }: { blocks: ChatA2UIBlock[] }) {
       <Typography.Text type="secondary" className="zn-rich-message__section-label">
         A2UI
       </Typography.Text>
-      <Space direction="vertical" size={8} className="zn-rich-message__a2ui-list">
+      <Space orientation="vertical" size={8} className="zn-rich-message__a2ui-list">
         {blocks.map((block, index) => <A2UIBlockView key={block.id ?? index} block={block} />)}
       </Space>
     </div>
@@ -246,7 +246,7 @@ function A2UIBlockView({ block }: { block: ChatA2UIBlock }) {
         {block.title && <Typography.Text strong>{block.title}</Typography.Text>}
         <Steps
           size="small"
-          direction="vertical"
+          orientation="vertical"
           items={(block.items ?? []).map((item, index) => {
             const record = isRecord(item) ? item : {}
             return {

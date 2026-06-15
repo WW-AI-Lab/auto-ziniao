@@ -60,7 +60,7 @@ export default function Chat() {
     get<{ items: AgentInfo[]; default: string }>('/api/chat/agents').then((d) => {
       setAgents(d.items)
       setDefaultAgent(d.default)
-    })
+    }).catch((e) => message.error((e as Error).message))
     reloadSessions(true).catch((e) => message.error(e.message))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -269,7 +269,7 @@ export default function Chat() {
               optionRender={(option) => {
                 const agent = agentByName.get(String(option.value))
                 return (
-                  <Space direction="vertical" size={0} style={{ lineHeight: 1.25 }}>
+                  <Space orientation="vertical" size={0} style={{ lineHeight: 1.25 }}>
                     <span>{agent?.label ?? option.label}</span>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       {agent?.type_label ?? agent?.type ?? ''}

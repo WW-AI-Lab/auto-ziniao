@@ -1,11 +1,11 @@
 {
   "name": "@ww-ai-lab/auto-ziniao-schemas",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Zod contracts and JSON schemas for Auto Ziniao flows and WebAdmin APIs.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",
     "directory": "packages/schemas"
   },
   "type": "module",

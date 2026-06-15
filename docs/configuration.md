@@ -2,6 +2,8 @@
 
 ## ZClaw API key
 
+使用前必须先在紫鸟开发者平台申请/生成紫鸟助手 key。下载安装紫鸟浏览器时，请使用最新支持 OpenClaw 的版本；安装、申请 key、安装 Ziniao Assistant Skill 和发消息执行的完整步骤以 [紫鸟助手官方指南](https://open.ziniao.com/ziniaoAssistant) 为准。
+
 推荐放在用户级配置：
 
 ```json
@@ -10,7 +12,7 @@
 }
 ```
 
-路径为 `~/.zclaw/config.json`。也可以使用环境变量 `ZCLAW_API_KEY`。不要把真实 key 写入仓库。
+路径为 `~/.zclaw/config.json`。也可以使用环境变量 `ZCLAW_API_KEY`。这里的 `ZCLAW_API_KEY` 填写紫鸟开发者平台生成的紫鸟助手 key；不要把真实 key 写入仓库。
 
 ## 项目配置
 

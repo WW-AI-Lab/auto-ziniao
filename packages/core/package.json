@@ -1,11 +1,11 @@
 {
   "name": "@ww-ai-lab/auto-ziniao-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Shared filesystem and error helpers for Auto Ziniao.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",
     "directory": "packages/core"
   },
   "type": "module",

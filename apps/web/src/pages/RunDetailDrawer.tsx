@@ -64,7 +64,7 @@ export default function RunDetailDrawer({
     >
       {error && <Alert type="error" showIcon message="加载失败" description={error} style={{ marginBottom: 12 }} />}
       {detail && (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
           <Descriptions bordered size="small" column={1}>
             <Descriptions.Item label="状态">{STATUS_TAG[detail.status] ?? detail.status}</Descriptions.Item>
             <Descriptions.Item label="来源">{detail.source}</Descriptions.Item>

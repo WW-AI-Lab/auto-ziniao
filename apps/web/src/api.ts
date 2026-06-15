@@ -39,7 +39,21 @@ export class ApiError extends Error {
 }
 
 async function handle<T>(resp: Response): Promise<T> {
-  if (resp.ok) return resp.json() as Promise<T>
+  if (resp.ok) {
+    const contentType = resp.headers.get('content-type') ?? ''
+    if (!contentType.toLowerCase().includes('application/json')) {
+      throw new ApiError(
+        resp.status,
+        'invalid_json_response',
+        '接口返回了非 JSON 响应，请确认 WebAdmin API 后端已启动且 Vite 代理已生效',
+      )
+    }
+    try {
+      return await resp.json() as T
+    } catch {
+      throw new ApiError(resp.status, 'invalid_json_response', '接口返回的 JSON 无法解析')
+    }
+  }
   let message = `HTTP ${resp.status}`
   let code = 'http_error'
   try {

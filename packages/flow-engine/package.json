@@ -1,11 +1,11 @@
 {
   "name": "@ww-ai-lab/auto-ziniao-flow-engine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Flow loading, validation, execution, pacing and risk controls for Auto Ziniao.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ww-ai-lab/auto-ziniao.git",
+    "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",
     "directory": "packages/flow-engine"
   },
   "type": "module",

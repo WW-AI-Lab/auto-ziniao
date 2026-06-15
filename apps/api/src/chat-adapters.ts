@@ -109,20 +109,17 @@ async function runCommandAgent(input: SendChatWithAgentInput): Promise<GatewayCh
     timeoutMs: input.agent.timeoutSec * 1000
   });
   if (result.exitCode !== 0 || result.timedOut || result.commandMissing) {
-    throw chatAdapterError(input.agent, commandErrorMessage(result), {
-      code: result.timedOut ? "timeout" : result.commandMissing ? "command_missing" : "command_failed",
-      cli_exit_code: result.exitCode,
-      cli_stderr: truncate(result.stderr ?? "", MAX_DIAGNOSTIC_CHARS),
-      timed_out: Boolean(result.timedOut),
-      command_missing: Boolean(result.commandMissing)
-    });
+    throw commandAdapterError(input.agent, result, normalizeCommandFailure(input.agent, result));
+  }
+  if (hasCodexCliOutputFailure(input.agent, result)) {
+    throw commandAdapterError(input.agent, result, normalizeCommandFailure(input.agent, result));
   }
   const parsed = parseCommandOutput(input.agent, result.stdout ?? "");
   return withAgentExtras(input.agent, parsed);
 }
 
 function parseCommandOutput(agent: WebAdminChatAgentConfig, stdout: string): GatewayChatResult {
-  const text = truncate(stdout.trim(), MAX_OUTPUT_CHARS);
+  const text = truncate(normalizeCommandSuccessText(agent, stdout), MAX_OUTPUT_CHARS);
   if (agent.outputFormat !== "json") {
     return { text: text || "OK" };
   }
@@ -167,10 +164,94 @@ function chatAdapterError(agent: WebAdminChatAgentConfig, message: string, diagn
   });
 }
 
-function commandErrorMessage(result: ChatCommandRunResult) {
-  if (result.timedOut) return "Agent command timed out";
-  if (result.commandMissing) return "Agent command missing";
-  return truncate(result.stderr || `Agent command failed with exit code ${result.exitCode}`, MAX_DIAGNOSTIC_CHARS);
+function commandAdapterError(
+  agent: WebAdminChatAgentConfig,
+  result: ChatCommandRunResult,
+  normalized: { code: string; message: string; remediation?: string }
+) {
+  return chatAdapterError(agent, normalized.message, {
+    code: normalized.code,
+    cli_exit_code: result.exitCode,
+    cli_stderr: truncate(result.stderr ?? "", MAX_DIAGNOSTIC_CHARS),
+    cli_stdout: truncate(result.stdout ?? "", MAX_DIAGNOSTIC_CHARS),
+    timed_out: Boolean(result.timedOut),
+    command_missing: Boolean(result.commandMissing),
+    remediation: normalized.remediation
+  });
+}
+
+function normalizeCommandFailure(agent: WebAdminChatAgentConfig, result: ChatCommandRunResult) {
+  if (result.timedOut) {
+    return { code: "timeout", message: "Agent command timed out" };
+  }
+  if (result.commandMissing) {
+    return { code: "command_missing", message: "Agent command missing" };
+  }
+
+  const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
+  if (agent.type === "codex-cli") {
+    const codexDetail = extractCodexErrorDetail(output);
+    if (/requires a newer version of Codex/i.test(codexDetail)) {
+      return {
+        code: "codex_cli_version_unsupported",
+        message: "Codex CLI 版本过低，当前模型需要更新版本的 Codex。请升级本机 Codex app/CLI 后重试，或在 config.json 中为 WebAdmin Codex agent 覆盖可用模型。",
+        remediation: "upgrade_codex_cli_or_override_model"
+      };
+    }
+    if (codexDetail) {
+      return {
+        code: "codex_cli_failed",
+        message: truncate(`Codex CLI 调用失败：${codexDetail}`, MAX_DIAGNOSTIC_CHARS)
+      };
+    }
+  }
+
+  return {
+    code: "command_failed",
+    message: truncate(result.stderr || `Agent command failed with exit code ${result.exitCode}`, MAX_DIAGNOSTIC_CHARS)
+  };
+}
+
+function hasCodexCliOutputFailure(agent: WebAdminChatAgentConfig, result: ChatCommandRunResult) {
+  if (agent.type !== "codex-cli") return false;
+  return Boolean(extractCodexErrorDetail(`${result.stderr ?? ""}\n${result.stdout ?? ""}`));
+}
+
+function extractCodexErrorDetail(output: string) {
+  const details = Array.from(output.matchAll(/\{"detail"\s*:\s*"([^"]+)"\}/g))
+    .map((match) => match[1]?.trim())
+    .filter(Boolean) as string[];
+  if (details.length) {
+    return details[details.length - 1]!;
+  }
+  const errorLine = output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .reverse()
+    .find((line) => /(?:ERROR|stream error|unexpected status|Bad Request)/i.test(line));
+  return errorLine ? stripCodexLogPrefix(errorLine) : "";
+}
+
+function normalizeCommandSuccessText(agent: WebAdminChatAgentConfig, stdout: string) {
+  const text = stdout.trim();
+  if (agent.type !== "codex-cli") return text;
+  return text
+    .split(/\r?\n/)
+    .map((line) => stripCodexLogPrefix(line.trim()))
+    .filter((line) => line && !isCodexStatusLine(line))
+    .join("\n")
+    .trim();
+}
+
+function stripCodexLogPrefix(value: string) {
+  return value.replace(/^\[[^\]]+\]\s*/, "").trim();
+}
+
+function isCodexStatusLine(value: string) {
+  return /^OpenAI Codex\b/i.test(value)
+    || /^workdir:\s/i.test(value)
+    || /^User instructions:/i.test(value)
+    || /^reasoning summaries:/i.test(value);
 }
 
 function renderCommand(command: string[], values: Record<string, string>) {

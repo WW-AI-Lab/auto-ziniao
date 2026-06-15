@@ -21,8 +21,11 @@ pnpm auto-ziniao --help
 
 - Node.js >= 22
 - pnpm 10.x（仓库开发）
-- 紫鸟客户端已启动，ZClaw bridge 监听 `127.0.0.1:9481`
-- ZClaw API key 只放在本机环境变量或 `~/.zclaw/config.json`
+- 下载安装紫鸟浏览器最新支持 OpenClaw 的版本，并保持紫鸟客户端已启动
+- 必须先在紫鸟开发者平台申请/生成紫鸟助手 key；其他安装、配置和使用方法见 [紫鸟助手官方指南](https://open.ziniao.com/ziniaoAssistant)
+- 安装 `ziniao-assistant` skill；本仓库已在 `skills/ziniao-assistant` 归档最终版本，可复制到所用 Agent 的 skills 目录，或按官方指南安装
+- ZClaw bridge 监听 `127.0.0.1:9481`
+- 紫鸟助手 key 只放在本机环境变量或 `~/.zclaw/config.json`
 
 `~/.zclaw/config.json` 示例：
 

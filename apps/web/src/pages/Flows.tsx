@@ -309,7 +309,7 @@ export default function Flows() {
               key: ex.path,
               label: `提取脚本: ${ex.path}${ex.exists ? '' : '（不存在）'}`,
               children: (
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                   <Button size="small" icon={<EditOutlined />} onClick={() => openExtractEditor(ex.path)}>
                     {ex.exists ? '编辑' : '创建'}
                   </Button>
@@ -414,7 +414,7 @@ export default function Flows() {
         }}
         width={720}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
           <div>
             状态: {STATUS_TAG[tracking?.status ?? ''] ?? tracking?.status}
             {tracking?.duration_ms != null && ` （${tracking.duration_ms}ms）`}
