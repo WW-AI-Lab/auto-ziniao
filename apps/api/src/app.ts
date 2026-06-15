@@ -8,7 +8,8 @@ import { ensureDir, readJsonFile, readJsonLinesFile, writeJsonFile } from "@ww-a
 import { validateFlow } from "@ww-ai-lab/auto-ziniao-flow-engine";
 import { AgentRunner } from "@ww-ai-lab/auto-ziniao-self-heal";
 
-import { createConfig, getHealConfig, getWebAdminChatConfig, WebAdminConfig } from "./config.js";
+import { defaultChatCommandRunner, sendChatWithAgent, type ChatCommandRunner } from "./chat-adapters.js";
+import { createConfig, getHealConfig, getWebAdminChatConfig, WebAdminConfig, type CommandLocator } from "./config.js";
 import { badRequest, conflict, notFound, ApiError } from "./errors.js";
 import { GatewayChatClient, OpenClawGatewayRpcChatClient } from "./openclaw-gateway.js";
 import { createFlowRunner } from "./runner.js";
@@ -24,6 +25,8 @@ export type CreateAppOptions = {
   runner?: ReturnType<typeof createFlowRunner>;
   agentRunner?: AgentRunner;
   chatClient?: GatewayChatClient;
+  chatCommandRunner?: ChatCommandRunner;
+  commandLocator?: CommandLocator;
   startScheduler?: boolean;
 };
 
@@ -74,7 +77,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<Fastify
   registerFlowRoutes(app, { config, roots, runner, storage });
   registerMonitoringRoutes(app, { config, roots, storage });
   registerScheduleRoutes(app, { config, storage, scheduler });
-  registerChatRoutes(app, { config, storage, busySessions, chatClient });
+  registerChatRoutes(app, {
+    config,
+    storage,
+    busySessions,
+    chatClient,
+    chatCommandRunner: options.chatCommandRunner ?? defaultChatCommandRunner,
+    commandLocator: options.commandLocator
+  });
   await registerStaticRoutes(app, config);
   return app;
 }
@@ -443,14 +453,57 @@ function registerScheduleRoutes(
 
 function registerChatRoutes(
   app: FastifyInstance,
-  deps: { config: WebAdminConfig; storage: Storage; busySessions: Set<string>; chatClient: GatewayChatClient }
+  deps: {
+    config: WebAdminConfig;
+    storage: Storage;
+    busySessions: Set<string>;
+    chatClient: GatewayChatClient;
+    chatCommandRunner: ChatCommandRunner;
+    commandLocator?: CommandLocator;
+  }
 ) {
+  const preferenceKey = "chat.default_agent";
+  const effectiveDefaultAgent = () => {
+    const cfg = getWebAdminChatConfig(deps.config.repoRoot, { commandLocator: deps.commandLocator });
+    const preferred = deps.storage.getMeta(preferenceKey);
+    if (preferred && cfg.agents[preferred]?.available) return { cfg, defaultAgent: preferred };
+    return { cfg, defaultAgent: cfg.defaultAgent };
+  };
+
   app.get("/api/chat/agents", async () => {
-    const cfg = getWebAdminChatConfig(deps.config.repoRoot);
+    const { cfg, defaultAgent } = effectiveDefaultAgent();
     return {
-      default: cfg.defaultAgent,
-      items: Object.entries(cfg.agents).map(([name, agent]) => ({ name, timeout_sec: agent.timeoutSec }))
+      default: defaultAgent,
+      items: Object.values(cfg.agents).map((agent) => ({
+        name: agent.name,
+        type: agent.type,
+        label: agent.label,
+        type_label: agent.typeLabel,
+        description: agent.description,
+        icon: agent.icon,
+        timeout_sec: agent.timeoutSec,
+        available: agent.available,
+        source: agent.source,
+        diagnostic: agent.diagnostic,
+        capabilities: agent.capabilities
+      }))
     };
+  });
+
+  app.get("/api/chat/preferences", async () => {
+    const { defaultAgent } = effectiveDefaultAgent();
+    return { default_agent: defaultAgent };
+  });
+
+  app.put<{ Body: { default_agent?: string } }>("/api/chat/preferences", async (request) => {
+    const agentName = request.body?.default_agent;
+    if (!agentName) throw badRequest("default_agent 不能为空");
+    const cfg = getWebAdminChatConfig(deps.config.repoRoot, { commandLocator: deps.commandLocator });
+    const agent = cfg.agents[agentName];
+    if (!agent) throw badRequest(`未发现 agent: ${agentName}`);
+    if (!agent.available) throw badRequest(`agent 不可用: ${agentName}`);
+    deps.storage.setMeta(preferenceKey, agentName);
+    return { default_agent: agentName };
   });
 
   app.get("/api/chat/sessions", async () => ({
@@ -458,18 +511,24 @@ function registerChatRoutes(
   }));
 
   app.post<{ Body: { title?: string; agent?: string } }>("/api/chat/sessions", async (request) => {
-    const cfg = getWebAdminChatConfig(deps.config.repoRoot);
-    const agent = request.body?.agent ?? cfg.defaultAgent;
-    if (!cfg.agents[agent]) throw badRequest(`config.json 中未配置 agent: ${agent}`);
+    const { cfg, defaultAgent } = effectiveDefaultAgent();
+    const agent = request.body?.agent ?? defaultAgent;
+    if (!cfg.agents[agent]) throw badRequest(`未发现 agent: ${agent}`);
+    if (!cfg.agents[agent].available) throw badRequest(`agent 不可用: ${agent}`);
     return deps.storage.createSession(request.body?.title?.trim() || "新会话", agent);
   });
 
-  app.put<{ Params: { sid: string }; Body: { title?: string; agent?: string } }>("/api/chat/sessions/:sid", async (request) => {
+  app.put<{ Params: { sid: string }; Body: { title?: string; agent?: string; remember_default?: boolean } }>("/api/chat/sessions/:sid", async (request) => {
     if (!deps.storage.getSession(request.params.sid)) throw notFound(`会话不存在: ${request.params.sid}`);
-    if (request.body.agent && !getWebAdminChatConfig(deps.config.repoRoot).agents[request.body.agent]) {
-      throw badRequest(`config.json 中未配置 agent: ${request.body.agent}`);
+    if (request.body.agent) {
+      const agent = getWebAdminChatConfig(deps.config.repoRoot, { commandLocator: deps.commandLocator }).agents[request.body.agent];
+      if (!agent) throw badRequest(`未发现 agent: ${request.body.agent}`);
+      if (!agent.available) throw badRequest(`agent 不可用: ${request.body.agent}`);
+      if (request.body.remember_default) {
+        deps.storage.setMeta(preferenceKey, request.body.agent);
+      }
     }
-    return deps.storage.updateSession(request.params.sid, request.body);
+    return deps.storage.updateSession(request.params.sid, { title: request.body.title, agent: request.body.agent });
   });
 
   app.delete<{ Params: { sid: string } }>("/api/chat/sessions/:sid", async (request) => {
@@ -499,16 +558,19 @@ function registerChatRoutes(
     writeSse(reply, { type: "accepted", session_id: request.params.sid, message_id: assistantId });
     writeSse(reply, { type: "start", session_id: request.params.sid, message_id: assistantId });
     try {
-      const cfg = getWebAdminChatConfig(deps.config.repoRoot);
+      const cfg = getWebAdminChatConfig(deps.config.repoRoot, { commandLocator: deps.commandLocator });
       const agentName = String(session.agent);
       const agent = cfg.agents[agentName];
-      if (!agent) throw badRequest(`config.json 中未配置 agent: ${agentName}`);
-      const result = await deps.chatClient.sendChat({
+      if (!agent) throw badRequest(`未发现 agent: ${agentName}`);
+      const result = await sendChatWithAgent({
         agentName,
         agent,
         sessionId: request.params.sid,
         content,
-        messageId: assistantId
+        messageId: assistantId,
+        repoRoot: deps.config.repoRoot,
+        gatewayClient: deps.chatClient,
+        commandRunner: deps.chatCommandRunner
       });
       const text = result.text || "OK";
       const extras = buildChatExtras(result);
@@ -535,8 +597,24 @@ function buildChatExtras(source: unknown): ChatExtras | undefined {
     reasoning?: unknown;
     tools?: unknown;
     a2ui?: unknown;
+    agent?: unknown;
+    agentLabel?: unknown;
+    agentType?: unknown;
+    diagnostic?: unknown;
   };
   const extras: ChatExtras = {};
+  if (typeof record.agent === "string" && record.agent) {
+    extras.agent = record.agent;
+  }
+  if (typeof record.agentLabel === "string" && record.agentLabel) {
+    extras.agent_label = record.agentLabel;
+  }
+  if (typeof record.agentType === "string" && record.agentType) {
+    extras.agent_type = record.agentType;
+  }
+  if (isRecord(record.diagnostic)) {
+    extras.diagnostic = record.diagnostic;
+  }
   if (typeof record.reasoning === "string" && record.reasoning) {
     extras.reasoning = record.reasoning;
   }
@@ -548,7 +626,7 @@ function buildChatExtras(source: unknown): ChatExtras | undefined {
     const a2ui = record.a2ui.filter(isChatA2UIBlock);
     if (a2ui.length) extras.a2ui = a2ui;
   }
-  return extras.reasoning || extras.tools?.length || extras.a2ui?.length ? extras : undefined;
+  return extras.reasoning || extras.tools?.length || extras.a2ui?.length || extras.agent || extras.diagnostic ? extras : undefined;
 }
 
 function writeChatExtrasSse(reply: FastifyReply, sessionId: string, messageId: number, extras: ChatExtras | undefined) {

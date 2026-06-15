@@ -6,11 +6,57 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "./app.js";
+import { getWebAdminChatConfig } from "./config.js";
 import { createFlowRunner } from "./runner.js";
 import { createScheduler } from "./scheduler.js";
 import { createStorage } from "./storage.js";
 
 describe("api app", () => {
+  it("discovers built-in chat agents and applies config overlays", () => {
+    const repo = createRepo();
+    const cfg = getWebAdminChatConfig(repo.root, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : command === "claude" ? "/mock/bin/claude" : null;
+      }
+    });
+    expect(cfg.defaultAgent).toBe("openclaw");
+    expect(cfg.agents.openclaw).toMatchObject({ type: "openclaw-gateway", available: true, source: "discovered" });
+    expect(cfg.agents.codex).toMatchObject({ type: "codex-cli", available: true, command: expect.arrayContaining(["/mock/bin/codex", "exec"]) });
+    expect(cfg.agents.claude).toMatchObject({ type: "claude-code-cli", available: true, command: expect.arrayContaining(["/mock/bin/claude", "-p"]) });
+
+    writeFileSync(path.join(repo.root, "config.json"), JSON.stringify({
+      webadmin: {
+        chat: {
+          agent: "codex",
+          agents: {
+            codex: { label: "Codex 本机", timeout_sec: 123 },
+            claude: { disabled: true }
+          }
+        }
+      }
+    }));
+    const overlaid = getWebAdminChatConfig(repo.root, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : command === "claude" ? "/mock/bin/claude" : null;
+      }
+    });
+    expect(overlaid.defaultAgent).toBe("codex");
+    expect(overlaid.agents.codex).toMatchObject({ label: "Codex 本机", timeoutSec: 123, source: "overlay" });
+    expect(overlaid.agents.claude.available).toBe(false);
+    expect(overlaid.agents.claude.diagnostic?.code).toBe("disabled");
+
+    const missingRepo = createRepo();
+    writeFileSync(path.join(missingRepo.root, "config.json"), JSON.stringify({
+      webadmin: { chat: { agents: { codex: { label: "Codex 本机", timeout_sec: 123 } } } }
+    }));
+    const missing = getWebAdminChatConfig(missingRepo.root, { commandLocator: () => null });
+    expect(missing.agents.codex).toMatchObject({
+      label: "Codex 本机",
+      available: false,
+      diagnostic: { code: "command_missing" }
+    });
+  });
+
   it("serves flow APIs, rejects invalid save, and runs local flow offline", async () => {
     const repo = createRepo();
     const app = await createTestApp(repo);
@@ -444,6 +490,114 @@ describe("api app", () => {
     expect(messages[1].extras.reasoning).toContain("等待工具返回");
     expect(messages[1].extras.tools[0]).toMatchObject({ name: "gateway_agent", status: "failed" });
     await app.close();
+  });
+
+  it("exposes discovered chat agent metadata without leaking commands", async () => {
+    const repo = createRepo();
+    writeFileSync(path.join(repo.root, "config.json"), JSON.stringify({
+      webadmin: {
+        chat: {
+          agents: {
+            codex: {
+              label: "Codex Secret",
+              token: "secret-token",
+              token_path: "/Users/example/.secret/token",
+              command: ["/secret/bin/codex", "{prompt}"]
+            }
+          }
+        }
+      },
+      heal: {
+        agent: "mock",
+        agents: { mock: { command: ["mock-agent", "{prompt}"], timeout_sec: 1 } }
+      }
+    }));
+    const app = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "claude" ? "/mock/bin/claude" : null;
+      }
+    });
+    const response = await app.inject({ method: "GET", url: "/api/chat/agents" });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.default).toBe("openclaw");
+    expect(body.items.map((item: { name: string }) => item.name)).toEqual(expect.arrayContaining(["openclaw", "codex", "claude"]));
+    expect(body.items.find((item: { name: string }) => item.name === "codex")).toMatchObject({
+      type: "codex-cli",
+      label: "Codex Secret",
+      available: false,
+      source: "overlay",
+      diagnostic: { code: "command_missing", message: "未找到已配置的 Agent 命令" }
+    });
+    expect(JSON.stringify(body)).not.toContain("/mock/bin/codex");
+    expect(JSON.stringify(body)).not.toContain("/secret/bin/codex");
+    expect(JSON.stringify(body)).not.toContain("secret-token");
+    expect(JSON.stringify(body)).not.toContain("/Users/example/.secret/token");
+    expect(JSON.stringify(body)).not.toContain("\"command\"");
+    await app.close();
+  });
+
+  it("uses chat default preference for new sessions and falls back when unavailable", async () => {
+    const repo = createRepo();
+    const app = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : null;
+      }
+    });
+    const pref = await app.inject({
+      method: "PUT",
+      url: "/api/chat/preferences",
+      payload: { default_agent: "codex" }
+    });
+    expect(pref.statusCode).toBe(200);
+    const session = await app.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "pref" } });
+    expect(session.json().agent).toBe("codex");
+    await app.close();
+
+    const fallback = await createTestApp(repo, { commandLocator: () => null });
+    const fallbackSession = await fallback.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "fallback" } });
+    expect(fallbackSession.json().agent).toBe("openclaw");
+    await fallback.close();
+  });
+
+  it("sends chat through codex CLI adapter and keeps failures isolated", async () => {
+    const repo = createRepo();
+    const app = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : null;
+      },
+      chatCommandRunner: async ({ command }) => {
+        expect(command).toEqual(expect.arrayContaining(["/mock/bin/codex", "exec", "你好"]));
+        return { exitCode: 0, stdout: "codex ok" };
+      },
+      chatClient: {
+        async sendChat() {
+          throw new Error("gateway should not run");
+        }
+      }
+    });
+    const sid = (await app.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "codex", agent: "codex" } })).json().id;
+    const response = await app.inject({ method: "POST", url: `/api/chat/sessions/${sid}/messages`, payload: { content: "你好" } });
+    expect(response.body).toContain("codex ok");
+    const messages = (await app.inject({ method: "GET", url: `/api/chat/sessions/${sid}/messages` })).json().items;
+    expect(messages[1]).toMatchObject({ status: "done", content: "codex ok" });
+    expect(messages[1].extras).toMatchObject({ agent: "codex", agent_type: "codex-cli" });
+    await app.close();
+
+    const failed = await createTestApp(repo, {
+      commandLocator(command) {
+        return command === "codex" ? "/mock/bin/codex" : null;
+      },
+      chatCommandRunner: async () => ({ exitCode: 2, stderr: "bad codex" })
+    });
+    const failedSid = (await failed.inject({ method: "POST", url: "/api/chat/sessions", payload: { title: "codex", agent: "codex" } })).json().id;
+    const failedResponse = await failed.inject({ method: "POST", url: `/api/chat/sessions/${failedSid}/messages`, payload: { content: "你好" } });
+    expect(failedResponse.body).toContain("\"type\":\"error\"");
+    expect(failedResponse.body).toContain("bad codex");
+    const failedMessages = (await failed.inject({ method: "GET", url: `/api/chat/sessions/${failedSid}/messages` })).json().items;
+    expect(failedMessages[1]).toMatchObject({ status: "failed" });
+    expect(failedMessages[1].extras.diagnostic).toMatchObject({ code: "command_failed", cli_exit_code: 2 });
+    await failed.close();
   });
 
   it("keeps API available when frontend dist is missing and serves dist when present", async () => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   App, Avatar, Button, Empty, Select, Space, Spin, Typography,
+  Tooltip,
 } from 'antd'
 import {
   PlusOutlined, RobotOutlined, UserOutlined,
@@ -40,6 +41,13 @@ export default function Chat() {
   const finalizeRef = useRef<(() => void) | null>(null)
 
   const active = sessions.find((s) => s.id === activeId) ?? null
+  const agentByName = new Map(agents.map((agent) => [agent.name, agent]))
+  const activeAgent = active ? agentByName.get(active.agent) : null
+
+  const agentLabel = (name: string) => {
+    const agent = agentByName.get(name)
+    return agent?.label ?? name
+  }
 
   const reloadSessions = useCallback(async (selectFirst = false) => {
     const d = await get<{ items: ChatSession[] }>('/api/chat/sessions')
@@ -76,7 +84,7 @@ export default function Chat() {
 
   const newSession = async () => {
     const s = await post<ChatSession>('/api/chat/sessions',
-      { title: `会话 ${new Date().toLocaleTimeString('zh-CN')}`, agent: defaultAgent })
+      { title: `会话 ${new Date().toLocaleTimeString('zh-CN')}` })
     await reloadSessions()
     setActiveId(s.id)
     setMessages([])
@@ -84,6 +92,10 @@ export default function Chat() {
 
   const send = async (text: string) => {
     if (!activeId || !text.trim()) return
+    if (activeAgent?.available === false) {
+      message.error(activeAgent.diagnostic?.message ?? '当前 Agent 不可用')
+      return
+    }
     const sid = activeId
     setSending(true)
     // 本地先上屏 user 气泡与 pending 占位
@@ -152,7 +164,8 @@ export default function Chat() {
 
   const changeAgent = async (agent: string) => {
     if (!activeId) return
-    await put(`/api/chat/sessions/${activeId}`, { agent })
+    await put(`/api/chat/sessions/${activeId}`, { agent, remember_default: true })
+    setDefaultAgent(agent)
     reloadSessions()
   }
 
@@ -213,7 +226,7 @@ export default function Chat() {
           style={{ flex: 1, overflow: 'auto' }}
           items={sessions.map((s) => ({
             key: s.id,
-            label: `${s.title}（${s.agent}）`,
+            label: `${s.title}（${agentLabel(s.agent)}）`,
           }))}
           activeKey={activeId ?? undefined}
           onActiveChange={(key) => setActiveId(String(key))}
@@ -249,15 +262,34 @@ export default function Chat() {
             <Typography.Text strong>{active?.title ?? 'Agent 对话'}</Typography.Text>
             <Select
               size="small"
-              style={{ width: 160 }}
+              style={{ width: 200 }}
               value={active?.agent ?? defaultAgent}
               disabled={!active || sending}
               onChange={changeAgent}
-              options={agents.map((a) => ({ value: a.name, label: a.name }))}
+              optionRender={(option) => {
+                const agent = agentByName.get(String(option.value))
+                return (
+                  <Space direction="vertical" size={0} style={{ lineHeight: 1.25 }}>
+                    <span>{agent?.label ?? option.label}</span>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {agent?.type_label ?? agent?.type ?? ''}
+                    </Typography.Text>
+                  </Space>
+                )
+              }}
+              options={agents.map((a) => ({
+                value: a.name,
+                label: a.label ?? a.name,
+                disabled: !a.available,
+              }))}
             />
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              agent 清单来自 config.json
-            </Typography.Text>
+            {activeAgent?.available === false && (
+              <Tooltip title={activeAgent.diagnostic?.message ?? 'Agent 不可用'}>
+                <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                  不可用
+                </Typography.Text>
+              </Tooltip>
+            )}
           </Space>
         </div>
 
@@ -289,8 +321,12 @@ export default function Chat() {
             value={senderValue}
             onChange={(v) => setSenderValue(v)}
             loading={sending}
-            disabled={!active}
-            placeholder={active ? '输入消息，Enter 发送' : '请先选择会话'}
+            disabled={!active || activeAgent?.available === false}
+            placeholder={active
+              ? activeAgent?.available === false
+                ? '当前 Agent 不可用'
+                : '输入消息，Enter 发送'
+              : '请先选择会话'}
             onSubmit={(text) => {
               setSenderValue('')
               send(text)

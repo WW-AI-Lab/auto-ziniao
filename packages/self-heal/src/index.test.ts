@@ -325,6 +325,40 @@ describe("config, cooldown, and triggering", () => {
     expect(HealEventSchema.parse(events[0]).status).toBe("success");
   });
 
+  it("supports command-style codex config through mock AgentRunner", async () => {
+    const repoRoot = tempRepoRoot();
+    const runner = new MockRunner();
+    const result = await triggerHeal(
+      {
+        flow_id: "orders",
+        error: "selector not found",
+        failed_step: { step_id: "extract", tool: "execute_script" }
+      },
+      {
+        repoRoot,
+        dataRoot: path.join(repoRoot, "data"),
+        clock: fixedClock,
+        config: testConfig({
+          agents: {
+            codex: {
+              command: ["codex", "exec", "--sandbox", "read-only", "{prompt}", "{session_key}"],
+              timeout_sec: 3
+            }
+          },
+          agent: "codex"
+        }),
+        agentRunner: runner
+      }
+    );
+    expect(result.status).toBe("success");
+    expect(result.agent).toBe("codex");
+    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls[0]?.command[0]).toBe("codex");
+    expect(runner.calls[0]?.command[1]).toBe("exec");
+    expect(runner.calls[0]?.command[4]).toContain("selector not found");
+    expect(runner.calls[0]?.command[5]).toContain("orders");
+  });
+
   it("returns structured errors for runner failures", async () => {
     const repoRoot = tempRepoRoot();
     const failed = await triggerHeal(

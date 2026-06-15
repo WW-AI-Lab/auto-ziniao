@@ -625,6 +625,19 @@
                         ],
                         "additionalProperties": true
                       }
+                    },
+                    "agent": {
+                      "type": "string"
+                    },
+                    "agent_label": {
+                      "type": "string"
+                    },
+                    "agent_type": {
+                      "type": "string"
+                    },
+                    "diagnostic": {
+                      "type": "object",
+                      "additionalProperties": {}
                     }
                   },
                   "additionalProperties": true
@@ -2214,13 +2227,80 @@
             "name": {
               "type": "string"
             },
+            "type": {
+              "type": "string",
+              "default": "openclaw-gateway"
+            },
+            "label": {
+              "type": "string"
+            },
+            "type_label": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "icon": {
+              "type": "string"
+            },
             "timeout_sec": {
               "type": "number"
+            },
+            "available": {
+              "type": "boolean",
+              "default": true
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "discovered",
+                    "configured",
+                    "overlay"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "configured"
+            },
+            "diagnostic": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             }
           },
           "required": [
             "name",
             "timeout_sec"
+          ],
+          "additionalProperties": true
+        },
+        "chatPreference": {
+          "type": "object",
+          "properties": {
+            "default_agent": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "default_agent"
           ],
           "additionalProperties": true
         },
@@ -2584,6 +2664,7 @@
         "healDetail",
         "webAdminStats",
         "chatAgentInfo",
+        "chatPreference",
         "chatSseEvent",
         "apiErrorResponse"
       ],

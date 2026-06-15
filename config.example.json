@@ -2,14 +2,33 @@
   "_comment": "复制为 config.json 后按本机环境调整。不要提交真实 config.json、token 或外部通知目标。",
   "webadmin": {
     "chat": {
+      "_comment": "WebAdmin 会自动发现 supported local Agents：OpenClaw、codex、Claude Code。此处只用于覆盖 label/timeout/command 或禁用自动发现结果。",
       "agent": "openclaw",
       "agents": {
         "openclaw": {
           "type": "openclaw-gateway",
+          "label": "OpenClaw",
           "gateway_url": "ws://127.0.0.1:18789",
           "agent_id": "main",
           "timeout_sec": 320,
           "session_key_prefix": "auto-ziniao-webadmin:"
+        },
+        "codex": {
+          "type": "codex-cli",
+          "label": "Codex",
+          "timeout_sec": 600
+        },
+        "claude": {
+          "type": "claude-code-cli",
+          "label": "Claude Code",
+          "timeout_sec": 600
+        },
+        "custom-agent": {
+          "type": "command-cli",
+          "label": "自定义 Agent",
+          "disabled": true,
+          "command": ["custom-agent", "{prompt}"],
+          "timeout_sec": 300
         }
       }
     }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ApiErrorResponseSchema,
   ChatAgentInfoSchema,
+  ChatPreferenceSchema,
   ChatExtrasSchema,
   ChatMessageSchema,
   ChatSseEventSchema,
@@ -74,7 +75,27 @@ describe("webadmin api schemas", () => {
     expect(OutputDirectorySchema.parse({ path: "", dirs: [], files: [{ name: "a.json", size: 1 }] }).files[0]?.name).toBe("a.json");
     expect(OutputPreviewSchema.parse({ size: 1, content: "ok" }).content).toBe("ok");
     expect(OutputRefSchema.parse({ name: "a.json", path: "a.json" }).available).toBe(true);
-    expect(ChatAgentInfoSchema.parse({ name: "mock", timeout_sec: 1 }).name).toBe("mock");
+    const agent = ChatAgentInfoSchema.parse({
+      name: "codex",
+      type: "codex-cli",
+      label: "Codex",
+      timeout_sec: 120,
+      available: true,
+      source: "discovered",
+      capabilities: ["chat"]
+    });
+    expect(agent.name).toBe("codex");
+    expect(agent.type).toBe("codex-cli");
+    expect(agent.capabilities).toContain("chat");
+    const unavailable = ChatAgentInfoSchema.parse({
+      name: "future",
+      type: "future-cli",
+      timeout_sec: 30,
+      available: false,
+      diagnostic: { code: "command_missing", message: "missing" }
+    });
+    expect(unavailable.available).toBe(false);
+    expect(ChatPreferenceSchema.parse({ default_agent: "codex" }).default_agent).toBe("codex");
     expect(ChatSseEventSchema.parse({ type: "delta", text: "hi" }).type).toBe("delta");
     expect(ChatSseEventSchema.parse({ type: "reasoning_delta", text: "thinking" }).type).toBe("reasoning_delta");
     expect(ChatSseEventSchema.parse({ type: "tool_call", name: "mock" }).type).toBe("tool_call");

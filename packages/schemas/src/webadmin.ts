@@ -159,7 +159,11 @@ export const ChatExtrasSchema = z
   .object({
     reasoning: z.string().optional(),
     tools: z.array(ChatToolCallSchema).optional(),
-    a2ui: z.array(ChatA2UIBlockSchema).optional()
+    a2ui: z.array(ChatA2UIBlockSchema).optional(),
+    agent: z.string().optional(),
+    agent_label: z.string().optional(),
+    agent_type: z.string().optional(),
+    diagnostic: UnknownRecordSchema.optional()
   })
   .passthrough();
 
@@ -190,7 +194,28 @@ export const ChatMessageSchema = z
 export const ChatAgentInfoSchema = z
   .object({
     name: z.string(),
-    timeout_sec: z.number()
+    type: z.string().default("openclaw-gateway"),
+    label: z.string().optional(),
+    type_label: z.string().optional(),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+    timeout_sec: z.number(),
+    available: z.boolean().default(true),
+    source: z.enum(["discovered", "configured", "overlay"]).or(z.string()).default("configured"),
+    diagnostic: z
+      .object({
+        code: z.string().optional(),
+        message: z.string().optional()
+      })
+      .passthrough()
+      .optional(),
+    capabilities: z.array(z.string()).default([])
+  })
+  .passthrough();
+
+export const ChatPreferenceSchema = z
+  .object({
+    default_agent: z.string()
   })
   .passthrough();
 
@@ -430,6 +455,7 @@ export type ChatExtras = z.infer<typeof ChatExtrasSchema>;
 export type ChatSession = z.infer<typeof ChatSessionSchema>;
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type ChatAgentInfo = z.infer<typeof ChatAgentInfoSchema>;
+export type ChatPreference = z.infer<typeof ChatPreferenceSchema>;
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 export type FlowSummary = z.infer<typeof FlowSummarySchema>;
 export type FlowDetail = z.infer<typeof FlowDetailSchema>;

@@ -54,15 +54,16 @@ const OPEN = 1;
 export class OpenClawGatewayRpcChatClient implements GatewayChatClient {
   async sendChat(input: GatewayChatInput): Promise<GatewayChatResult> {
     const timeoutMs = input.agent.timeoutSec * 1000;
+    const gatewayUrl = input.agent.gatewayUrl ?? "ws://127.0.0.1:18789";
     const rpc = new GatewayRpcConnection({
-      url: input.agent.gatewayUrl,
+      url: gatewayUrl,
       token: resolveGatewayToken(input.agent)
     });
     try {
       await rpc.connect(Math.min(timeoutMs, 30_000));
       const response = await rpc.request("agent", {
         message: input.content,
-        agentId: input.agent.agentId,
+        agentId: input.agent.agentId ?? "main",
         sessionKey: buildSessionKey(input.agent, input.sessionId),
         deliver: false,
         timeout: input.agent.timeoutSec,
@@ -80,7 +81,7 @@ export class OpenClawGatewayRpcChatClient implements GatewayChatClient {
 }
 
 function buildSessionKey(agent: WebAdminChatAgentConfig, sessionId: string) {
-  return `agent:${agent.agentId}:${agent.sessionKeyPrefix}${sessionId}`;
+  return `agent:${agent.agentId ?? "main"}:${agent.sessionKeyPrefix ?? "auto-ziniao-webadmin:"}${sessionId}`;
 }
 
 function resolveGatewayToken(agent: WebAdminChatAgentConfig) {

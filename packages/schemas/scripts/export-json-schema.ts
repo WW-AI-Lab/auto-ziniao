@@ -9,6 +9,7 @@ import {
   ApiErrorResponseSchema,
   ChatAgentInfoSchema,
   ChatMessageSchema,
+  ChatPreferenceSchema,
   ChatSessionSchema,
   ChatSseEventSchema,
   CreateFlowRequestSchema,
@@ -88,6 +89,7 @@ const schemas = [
           healDetail: HealDetailSchema,
           webAdminStats: WebAdminStatsSchema,
           chatAgentInfo: ChatAgentInfoSchema,
+          chatPreference: ChatPreferenceSchema,
           chatSseEvent: ChatSseEventSchema,
           apiErrorResponse: ApiErrorResponseSchema
         }),

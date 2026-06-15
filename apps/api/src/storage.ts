@@ -47,6 +47,8 @@ export type FlowRunFilters = {
 export type Storage = {
   close(): void;
   meta(): Row[];
+  getMeta(key: string): string | null;
+  setMeta(key: string, value: string): void;
   createFlowRun(input: {
     run_id?: string;
     token?: string | null;
@@ -198,6 +200,13 @@ export function createStorage(dbFile: string) {
   const api: Storage = {
     close: () => db.close(),
     meta: () => db.prepare("SELECT key, value FROM meta").all() as Row[],
+    getMeta(key: string) {
+      const row = db.prepare("SELECT value FROM meta WHERE key=?").get(key) as Row | undefined;
+      return row ? String(row.value) : null;
+    },
+    setMeta(key: string, value: string) {
+      db.prepare("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)").run(key, value);
+    },
     createFlowRun(input: {
       run_id?: string;
       token?: string | null;
