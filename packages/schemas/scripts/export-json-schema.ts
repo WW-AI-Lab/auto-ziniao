@@ -6,16 +6,21 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { FlowDefinitionSchema } from "../src/flow.js";
 import {
   ApiErrorResponseSchema,
+  ChatAgentInfoSchema,
   ChatMessageSchema,
   ChatSessionSchema,
   ChatSseEventSchema,
   FlowDetailSchema,
   FlowSummarySchema,
+  HealDetailSchema,
+  HealEntrySchema,
   ManualRunStatusSchema,
   OutputDirectorySchema,
   OutputFileEntrySchema,
+  OutputPreviewSchema,
   ScheduleRunSchema,
-  ScheduleSchema
+  ScheduleSchema,
+  WebAdminStatsSchema
 } from "../src/webadmin.js";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +53,11 @@ const schemas = [
           manualRunStatus: ManualRunStatusSchema,
           outputFileEntry: OutputFileEntrySchema,
           outputDirectory: OutputDirectorySchema,
+          outputPreview: OutputPreviewSchema,
+          healEntry: HealEntrySchema,
+          healDetail: HealDetailSchema,
+          webAdminStats: WebAdminStatsSchema,
+          chatAgentInfo: ChatAgentInfoSchema,
           chatSseEvent: ChatSseEventSchema,
           apiErrorResponse: ApiErrorResponseSchema
         }),

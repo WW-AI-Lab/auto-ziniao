@@ -172,29 +172,40 @@ function registerMonitoringRoutes(
 
   app.get("/api/stats", async () => {
     const entries = (await readJsonlSafe<Record<string, unknown>>(path.join(deps.config.dataRoot, "logs", "runs.jsonl"))).slice(-1000);
-    const flows = new Map<string, { total: number; success: number; last_run?: unknown; last_status?: unknown }>();
+    const heals = await readJsonlSafe<Record<string, unknown>>(path.join(deps.config.repoRoot, "learnings", "heals.jsonl"));
+    const healsByFlow = new Map<string, number>();
+    for (const heal of heals) {
+      const flowId = typeof heal.flow_id === "string" ? heal.flow_id : null;
+      if (flowId) healsByFlow.set(flowId, (healsByFlow.get(flowId) ?? 0) + 1);
+    }
+    const flows = new Map<string, { total: number; success: number; last_run?: string | null; last_status?: string | null }>();
     for (const entry of entries) {
       const flowId = String(entry.flow_id ?? "unknown");
       const stat = flows.get(flowId) ?? { total: 0, success: 0 };
       stat.total += 1;
       if (entry.status === "success") stat.success += 1;
-      stat.last_run = entry.timestamp;
-      stat.last_status = entry.status;
+      stat.last_run = typeof entry.timestamp === "string" ? entry.timestamp : null;
+      stat.last_status = typeof entry.status === "string" ? entry.status : null;
       flows.set(flowId, stat);
     }
+    const schedules = deps.storage.listSchedules();
     return {
       runs_total: entries.length,
       runs_success: entries.filter((entry) => entry.status === "success").length,
       runs_failed: entries.filter((entry) => entry.status === "failed").length,
+      runs_error: entries.filter((entry) => entry.status === "error").length,
+      heals_total: heals.length,
       schedules: {
-        total: deps.storage.listSchedules().length,
-        enabled: deps.storage.listSchedules(true).length
+        total: schedules.length,
+        enabled: schedules.filter((schedule) => schedule.enabled).length
       },
       flows: [...flows.entries()].map(([flow_id, stat]) => ({
         flow_id,
         ...stat,
-        success_rate: stat.total ? Math.round((stat.success / stat.total) * 100) : 0
-      }))
+        success_rate: stat.total ? Math.round((stat.success / stat.total) * 100) : 0,
+        heal_count: healsByFlow.get(flow_id) ?? 0
+      })),
+      chat_sessions: deps.storage.listSessions().length
     };
   });
 
@@ -408,14 +419,14 @@ async function registerStaticRoutes(app: FastifyInstance, config: WebAdminConfig
     });
   } else {
     app.get("/", async () => ({
-      message: "前端构建产物缺失（webadmin/frontend/dist）。API 正常可用，前缀 /api。"
+      message: "前端构建产物缺失（apps/webadmin-frontend/dist）。API 正常可用，前缀 /api。"
     }));
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/")) {
         reply.status(404).send({ error: { code: "not_found", message: `API 不存在: ${request.url}` } });
       } else {
         reply.status(200).send({
-          message: "前端构建产物缺失（webadmin/frontend/dist）。API 正常可用，前缀 /api。"
+          message: "前端构建产物缺失（apps/webadmin-frontend/dist）。API 正常可用，前缀 /api。"
         });
       }
     });

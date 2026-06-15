@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./webadmin": {
+      "types": "./dist/webadmin.d.ts",
+      "import": "./dist/webadmin.js"
     }
   },
   "scripts": {

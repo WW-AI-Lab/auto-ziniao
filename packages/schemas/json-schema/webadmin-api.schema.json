@@ -110,7 +110,67 @@
             "updated_at": {
               "type": "string"
             },
-            "latest_run": {}
+            "latest_run": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "schedule_id": {
+                      "type": "string"
+                    },
+                    "fired_at": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "timeout",
+                            "skipped"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "exit_code": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "schedule_id",
+                    "fired_at",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
           "required": [
             "id",
@@ -269,11 +329,19 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "additionalProperties": {}
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "additionalProperties": true
                       }
                     }
                   },
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 {
                   "type": "null"
@@ -325,7 +393,62 @@
             },
             "last_run": {
               "anyOf": [
-                {},
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
                 {
                   "type": "null"
                 }
@@ -378,7 +501,62 @@
             },
             "last_run": {
               "anyOf": [
-                {},
+                {
+                  "type": "object",
+                  "properties": {
+                    "flow_id": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "success",
+                            "failed",
+                            "error",
+                            "exhausted"
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": "number"
+                    },
+                    "error": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    },
+                    "data_summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "default": {}
+                    }
+                  },
+                  "required": [
+                    "flow_id",
+                    "timestamp",
+                    "status"
+                  ],
+                  "additionalProperties": true
+                },
                 {
                   "type": "null"
                 }
@@ -605,6 +783,214 @@
           ],
           "additionalProperties": true
         },
+        "outputPreview": {
+          "type": "object",
+          "properties": {
+            "too_large": {
+              "type": "boolean"
+            },
+            "binary": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "name": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "size"
+          ],
+          "additionalProperties": true
+        },
+        "healEntry": {
+          "type": "object",
+          "properties": {
+            "heal_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "event": {
+              "type": "string"
+            },
+            "flow_id": {
+              "type": "string"
+            },
+            "step_id": {
+              "type": "string"
+            },
+            "error_type": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "healDetail": {
+          "type": "object",
+          "properties": {
+            "heal_id": {
+              "type": "string"
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "heal_id",
+            "context",
+            "prompt"
+          ],
+          "additionalProperties": true
+        },
+        "webAdminStats": {
+          "type": "object",
+          "properties": {
+            "runs_total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_success": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runs_error": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "heals_total": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "flows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flow_id": {
+                    "type": "string"
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "success": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "success_rate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "last_run": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "last_status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "heal_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "flow_id",
+                  "total",
+                  "success",
+                  "success_rate"
+                ],
+                "additionalProperties": true
+              },
+              "default": []
+            },
+            "schedules": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "enabled": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "total",
+                "enabled"
+              ],
+              "additionalProperties": true
+            },
+            "chat_sessions": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "required": [
+            "runs_total",
+            "runs_success",
+            "runs_failed",
+            "schedules"
+          ],
+          "additionalProperties": true
+        },
+        "chatAgentInfo": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "timeout_sec": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "timeout_sec"
+          ],
+          "additionalProperties": true
+        },
         "chatSseEvent": {
           "anyOf": [
             {
@@ -668,6 +1054,52 @@
                   },
                   "required": [
                     "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "reasoning_delta"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string",
+                      "default": ""
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "tool_call"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "message_id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "name"
                   ],
                   "additionalProperties": true
                 },
@@ -782,6 +1214,11 @@
         "manualRunStatus",
         "outputFileEntry",
         "outputDirectory",
+        "outputPreview",
+        "healEntry",
+        "healDetail",
+        "webAdminStats",
+        "chatAgentInfo",
         "chatSseEvent",
         "apiErrorResponse"
       ],

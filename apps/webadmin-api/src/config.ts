@@ -41,7 +41,7 @@ export function createConfig(input: Partial<WebAdminConfig> = {}): WebAdminConfi
     host: WEBADMIN_HOST,
     port,
     flowTimeoutMs: input.flowTimeoutMs ?? DEFAULT_FLOW_TIMEOUT_MS,
-    frontendDist: input.frontendDist ?? path.join(repoRoot, "webadmin", "frontend", "dist")
+    frontendDist: input.frontendDist ?? path.join(repoRoot, "apps", "webadmin-frontend", "dist")
   };
 }
 

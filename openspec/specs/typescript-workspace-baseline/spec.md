@@ -15,7 +15,7 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **THEN** typecheck/test/build 在 `packages/*` 范围内运行，不启动 ZClaw bridge、不打开店铺浏览器
 
 ### Requirement: 包边界最小化
-系统 SHALL 按迁移阶段维护最小 TypeScript 包与应用边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 已新增 `packages/flow-engine`；M4 已新增 `packages/self-heal`；M5 已新增 `packages/cli`；M6 SHALL 在此基础上仅新增 `apps/webadmin-api`。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度；`packages/self-heal` MUST 只实现错误分类、known issues、prompt/template rendering、cooldown、heal event log 和 Agent CLI adapter；`packages/cli` MUST 只实现命令行参数解析、命令编排、终端输出和 exit code；`apps/webadmin-api` MUST 只实现 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排。除 M6 明确允许的 `apps/webadmin-api` 外，系统 MUST NOT 创建或实现 `apps/webadmin-frontend`、移动 WebAdmin 前端、替换 Python 生产入口或移除 Python engine。
+系统 SHALL 按迁移阶段维护最小 TypeScript 包与应用边界。M1 已建立 `packages/core` 与 `packages/schemas`；M2 已新增 `packages/zclaw`；M3 已新增 `packages/flow-engine`；M4 已新增 `packages/self-heal`；M5 已新增 `packages/cli`；M6 已新增 `apps/webadmin-api`；本阶段 SHALL 在此基础上新增 `apps/webadmin-frontend`。`packages/core` MUST 仅包含路径、JSON/JSONL、时间、错误类型等无浏览器副作用的共享能力；`packages/schemas` MUST 仅包含契约类型、运行时校验和 JSON Schema 导出能力；`packages/zclaw` MUST 是 TS 侧唯一 ZClaw bridge client 包；`packages/flow-engine` MUST 只实现 flow 加载、校验、执行语义、run log/output 和通过 `packages/zclaw` 的工具步骤调度；`packages/self-heal` MUST 只实现错误分类、known issues、prompt/template rendering、cooldown、heal event log 和 Agent CLI adapter；`packages/cli` MUST 只实现命令行参数解析、命令编排、终端输出和 exit code；`apps/webadmin-api` MUST 只实现 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；`apps/webadmin-frontend` MUST 只实现 WebAdmin React frontend。系统 MUST NOT 在本阶段删除 Python engine、替换 `python3 manager.py` 生产入口或移除 Python WebAdmin 后端。
 
 #### Scenario: core 与 schemas 无浏览器副作用
 - **WHEN** 审查 `packages/core` 与 `packages/schemas`
@@ -41,9 +41,13 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 - **WHEN** 审查 `apps/webadmin-api` 源码
 - **THEN** WebAdmin API 不直接访问 bridge、不读取 ZClaw API key、不实现 flow DSL 或 self-heal 业务规则，只通过既有 TS packages 编排 WebAdmin 后端能力
 
-#### Scenario: 后续前端迁移不在本阶段创建
-- **WHEN** 检查 M6 change 的实现范围
-- **THEN** 不要求实现 `apps/webadmin-frontend`、移动 `webadmin/frontend` 或替换 WebAdmin 生产运行链路
+#### Scenario: webadmin-frontend 只做 Web 前端
+- **WHEN** 审查 `apps/webadmin-frontend` 源码
+- **THEN** WebAdmin frontend 只通过 same-origin `/api/*` 调用 WebAdmin API，不直接访问 ZClaw bridge、不读取 ZClaw API key、不调用本机浏览器自动化
+
+#### Scenario: Python production entry remains unchanged
+- **WHEN** 检查本阶段实现范围
+- **THEN** `manager.py`、`engine/` 和 Python WebAdmin 后端仍存在，最终删除留给 `remove-python-runtime`
 
 ### Requirement: 安全扫描进入基线验证
 系统 SHALL 提供一个可重复执行的静态安全扫描步骤，阻断新增本机浏览器自动化依赖或绕过 ZClaw bridge 的可疑代码。扫描 MUST 覆盖新增 TS 文件、相关配置、`packages/*` 和 `apps/*`。扫描 MUST 将 `packages/zclaw` 识别为唯一允许直接访问 ZClaw bridge 的 TS 包，并 MUST 继续阻断其他包、应用、scripts 或配置中的未授权 bridge 访问。
@@ -63,4 +67,19 @@ TBD - created by archiving change establish-typescript-contract-baseline. Update
 #### Scenario: WebAdmin API 禁止读取 ZClaw API key
 - **WHEN** `apps/webadmin-api` 中出现读取 `ZCLAW_API_KEY` 或 `~/.zclaw/config.json` 的代码
 - **THEN** 安全扫描失败，并提示 WebAdmin API 必须通过 flow-engine/CLI 编排边界间接执行真实工具步骤
+
+### Requirement: WebAdmin frontend baseline inclusion
+系统 SHALL 将 `apps/webadmin-frontend` 纳入 root workspace build/typecheck/baseline。默认 baseline MUST validate frontend without real ZClaw bridge, real flow execution, local browser launch, or real Agent CLI.
+
+#### Scenario: root build includes frontend
+- **WHEN** 用户执行 root `pnpm build`
+- **THEN** `apps/webadmin-frontend` 与既有 packages/apps 一同完成构建
+
+#### Scenario: root typecheck includes frontend
+- **WHEN** 用户执行 root `pnpm typecheck`
+- **THEN** `apps/webadmin-frontend` 与既有 packages/apps 一同完成类型检查
+
+#### Scenario: baseline includes frontend
+- **WHEN** 用户执行 `pnpm validate:baseline`
+- **THEN** frontend build/typecheck、WebAdmin API tests、schema export and security scan all run without real bridge or local browser automation
 

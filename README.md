@@ -26,7 +26,7 @@ python3 manager.py stats
 
 ## TypeScript 迁移基线（开发中）
 
-当前已完成 `docs/05-TS重构技术蓝图.md` 的 M6：WebAdmin 后端 TS 化。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine`、`packages/self-heal`、`packages/cli` 和 `apps/webadmin-api`：
+当前已完成 `docs/05-TS重构技术蓝图.md` 的 M6：WebAdmin 后端 TS 化，以及后续 WebAdmin 前端整理与双跑切换准备。根目录 pnpm workspace 已包含 `packages/core`、`packages/schemas`、`packages/zclaw`、`packages/flow-engine`、`packages/self-heal`、`packages/cli`、`apps/webadmin-api` 和 `apps/webadmin-frontend`：
 
 - `packages/core`：路径、JSON/JSONL、时间、错误类型等无浏览器副作用能力。
 - `packages/schemas`：flow DSL、运行日志、自愈记录和 WebAdmin DTO 的 TypeScript schema。
@@ -35,13 +35,14 @@ python3 manager.py stats
 - `packages/self-heal`：TypeScript 自愈包，提供错误分类、known issues 命中、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 和 mock runner 离线测试。
 - `packages/cli`：TypeScript 过渡 CLI，提供 `ziniao ...` 命令并聚合 flow-engine 与 self-heal。
 - `apps/webadmin-api`：TypeScript WebAdmin 后端，提供 Fastify REST/SSE API、SQLite WebAdmin 自有状态、调度器、chat SSE 与静态前端 dist 托管。
+- `apps/webadmin-frontend`：TypeScript WebAdmin 前端，复用 React + Vite + antd + `@ant-design/x`，构建产物由 `apps/webadmin-api` 托管。
 
 ```bash
 pnpm install
 pnpm validate:baseline
 ```
 
-注意：现阶段 TypeScript 已具备 flow-engine 离线执行、self-heal dry-run、`ziniao ...` 过渡 CLI、TS WebAdmin API 和双跑验证基础能力，但还不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、mock Agent runner、临时数据目录、固定 clock 和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，不得调用真实 OpenClaw/Claude/Cursor Agent CLI，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
+注意：现阶段 TypeScript 已具备 flow-engine 离线执行、self-heal dry-run、`ziniao ...` 过渡 CLI、TS WebAdmin API、TS WebAdmin 前端和 M7 preflight 证据基础能力，但还不是生产执行入口。`pnpm validate:baseline` 使用 mock tool client、mock Agent runner、临时数据目录、固定 clock 和 no-op sleeper，不得调用真实 `POST /zclaw/tools/invoke`，不得执行真实店铺 flow，不得调用真实 OpenClaw/Claude/Cursor Agent CLI，也不要求紫鸟客户端在线。日常运行、沉淀、自愈仍使用：
 
 ```bash
 python3 manager.py ...
@@ -56,17 +57,25 @@ pnpm ziniao validate orders_overview
 pnpm ziniao run webadmin_selftest -p greeting=hello --no-heal
 ```
 
-M6 完成后仍不替换 `python3 manager.py ...`，不移除 Python engine，也不移动当前 WebAdmin 前端。下一阶段是 `apps/webadmin-frontend` 整理与 WebAdmin 双跑切换准备。
+WebAdmin 前端整理完成后仍不替换 `python3 manager.py ...`，不移除 Python engine，也不最终切换 Python WebAdmin 生产链路。下一阶段是回到 `remove-python-runtime` 执行 M7 preflight 与 TS-only 切换。
 
-回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件、`packages/` 与 `apps/webadmin-api` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 M6，删除 `apps/webadmin-api` 并恢复 root scripts、TS alias、workspace 与 security scan 改动即可。回滚后验证 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`。
+回滚方式很直接：停止使用 TS 校验命令，删除根级 Node workspace 文件、`packages/`、`apps/webadmin-api` 与 `apps/webadmin-frontend` 即可；Python 引擎、`flows/`、`extracts/` 和历史数据不需要迁移回滚。若只回滚 WebAdmin 前端整理，删除或隔离 `apps/webadmin-frontend`，恢复 `apps/webadmin-api` 的旧 `frontendDist` 默认路径，并恢复 root scripts、TS alias、workspace 与 security scan 改动即可。回滚后验证 `python3 manager.py list` 和 `python3 manager.py validate orders_overview`。
 
-### TypeScript WebAdmin API（M6，过渡能力）
+### TypeScript WebAdmin（过渡能力）
 
 `apps/webadmin-api` 是 TS WebAdmin 后端能力，不替换当前 Python WebAdmin 生产链路。开发启动：
 
 ```bash
+pnpm webadmin:frontend:build
 pnpm webadmin:api
 # 默认 http://127.0.0.1:9482
+```
+
+前端开发：
+
+```bash
+pnpm webadmin:frontend
+# Vite dev server 通过 /api proxy 到 http://127.0.0.1:9482
 ```
 
 边界：
@@ -74,7 +83,7 @@ pnpm webadmin:api
 - 只监听 `127.0.0.1`，代码不提供 `0.0.0.0` 绑定开关。
 - 不直接访问 ZClaw bridge，不读取 ZClaw API key，不打开本机浏览器。
 - 默认测试使用 mock tool client、mock Agent runner、临时 data root，不执行真实 flow。
-- 静态前端仍托管当前 `webadmin/frontend/dist`；本阶段不创建 `apps/webadmin-frontend`。
+- 静态前端默认托管 `apps/webadmin-frontend/dist`；缺失 dist 时 API 仍可用并返回结构化提示。
 - SQLite 使用 Node 24 内置 `node:sqlite`。原因是当前 pnpm 安装策略阻止 native build script，`better-sqlite3` binding 不可用；该替代符合 M6 design 的 native addon 风险回退方案。
 
 ## Web 管理界面（可选）
@@ -136,6 +145,7 @@ data/                运行时数据（logs/ output/ backups/ webadmin.db，giti
 webadmin/            Web 管理界面（可选子工程：FastAPI + React，独立依赖）
 packages/            TypeScript 迁移包（core / schemas / zclaw / flow-engine / self-heal / cli，当前不替换生产入口）
 apps/webadmin-api/   TypeScript WebAdmin 后端（M6 过渡能力，当前不替换 Python WebAdmin）
+apps/webadmin-frontend/ TypeScript WebAdmin 前端（React/Vite/antd，dist 由 TS WebAdmin API 托管）
 docs/                评审报告、架构设计、流程规范、自愈机制
 AGENTS.md            Agent 工作守则（沉淀规范 + 安全规则）
 ```

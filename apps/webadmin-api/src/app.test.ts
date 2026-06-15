@@ -50,12 +50,18 @@ describe("webadmin-api app", () => {
     mkdirSync(path.join(repo.dataRoot, "output"), { recursive: true });
     writeFileSync(path.join(repo.dataRoot, "output", "result.json"), "{\"ok\":true}\n");
     writeFileSync(path.join(repo.dataRoot, "logs", "runs.jsonl"), `${JSON.stringify({ flow_id: "local", status: "success", timestamp: "t" })}\nnot-json\n`);
+    writeFileSync(path.join(repo.root, "learnings", "heals.jsonl"), `${JSON.stringify({ heal_id: "h1", flow_id: "local", event: "triggered" })}\n`);
     const app = await createTestApp(repo);
     expect((await app.inject({ method: "GET", url: "/api/outputs?path=../../etc/passwd" })).statusCode).toBe(400);
     expect((await app.inject({ method: "GET", url: "/api/outputs" })).json().files[0].name).toBe("result.json");
     expect((await app.inject({ method: "GET", url: "/api/outputs/preview?path=result.json" })).json().content).toContain("ok");
     expect((await app.inject({ method: "GET", url: "/api/runs" })).json().items).toHaveLength(1);
-    expect((await app.inject({ method: "GET", url: "/api/stats" })).json().runs_total).toBe(1);
+    const stats = (await app.inject({ method: "GET", url: "/api/stats" })).json();
+    expect(stats.runs_total).toBe(1);
+    expect(stats.runs_error).toBe(0);
+    expect(stats.heals_total).toBe(1);
+    expect(stats.flows[0].heal_count).toBe(1);
+    expect(stats.chat_sessions).toBe(0);
     await app.close();
   });
 
@@ -132,13 +138,21 @@ describe("webadmin-api app", () => {
     await appMissing.close();
 
     const present = createRepo();
-    const dist = path.join(present.root, "webadmin", "frontend", "dist");
+    const dist = path.join(present.root, "apps", "webadmin-frontend", "dist");
     mkdirSync(dist, { recursive: true });
     writeFileSync(path.join(dist, "index.html"), "<html>ok</html>");
     const appPresent = await createTestApp(present);
     expect((await appPresent.inject({ method: "GET", url: "/" })).body).toContain("ok");
     expect((await appPresent.inject({ method: "GET", url: "/api/nope" })).statusCode).toBe(404);
     await appPresent.close();
+
+    const injected = createRepo();
+    const injectedDist = path.join(injected.root, "custom-frontend-dist");
+    mkdirSync(injectedDist, { recursive: true });
+    writeFileSync(path.join(injectedDist, "index.html"), "<html>injected</html>");
+    const appInjected = await createTestApp(injected, { config: { frontendDist: injectedDist } });
+    expect((await appInjected.inject({ method: "GET", url: "/" })).body).toContain("injected");
+    await appInjected.close();
   });
 });
 
@@ -174,14 +188,15 @@ async function createTestApp(
   repo: { root: string; dataRoot: string },
   options: Partial<Parameters<typeof createApp>[0]> = {}
 ) {
+  const { config, ...rest } = options;
   return createApp({
-    config: { repoRoot: repo.root, dataRoot: repo.dataRoot },
+    config: { repoRoot: repo.root, dataRoot: repo.dataRoot, ...config },
     agentRunner: {
       async run() {
         return { exitCode: 0, stdout: "OK" };
       }
     },
-    ...options
+    ...rest
   });
 }
 

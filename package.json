@@ -8,15 +8,17 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/webadmin-api",
-    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/webadmin-api --pretty false",
+    "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/webadmin-api && pnpm --filter @ziniao/webadmin-frontend build",
+    "typecheck": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/webadmin-api apps/webadmin-frontend --pretty false",
     "test": "vitest run",
     "ziniao": "tsx packages/cli/src/bin/ziniao.ts",
     "webadmin:api": "tsx apps/webadmin-api/src/index.ts",
+    "webadmin:frontend": "pnpm --filter @ziniao/webadmin-frontend dev",
+    "webadmin:frontend:build": "pnpm --filter @ziniao/webadmin-frontend build",
     "schemas:export": "tsx packages/schemas/scripts/export-json-schema.ts",
     "validate:python": "tsx scripts/validate-python-flows.ts",
     "security:scan": "tsx scripts/security-scan.ts",
-    "validate:baseline": "pnpm validate:python && pnpm typecheck && pnpm test && pnpm schemas:export -- --check && pnpm security:scan"
+    "validate:baseline": "pnpm validate:python && pnpm typecheck && pnpm test && pnpm build && pnpm schemas:export -- --check && pnpm security:scan"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

@@ -30,9 +30,10 @@
 - **已完成 M4：Self-Heal 迁移**。已新增 `packages/self-heal`，提供 TS 侧错误分类、known issues、prompt/context 生成、cooldown、Agent CLI adapter、dry-run 与离线测试；默认验证不得调用真实 Agent CLI，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`。
 - **已完成 M5：CLI 迁移**。已新增 `packages/cli` 与 `ziniao ...` 过渡入口，兼容当前 `manager.py` 主要命令语义；默认验证仍只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`，不得调用真实 Agent CLI。
 - **已完成 M6：WebAdmin 后端 TS 化**。已新增 `apps/webadmin-api`，提供 Fastify REST/SSE API、SQLite WebAdmin 自有状态、调度器、chat SSE、静态前端 dist 托管、离线测试与安全扫描；默认验证仍只能使用离线 mock，不得执行真实 flow，不得调用真实 `POST /zclaw/tools/invoke`，不得调用真实 Agent CLI。
-- **下一阶段：WebAdmin 前端整理与双跑切换准备**。必须先创建新的 OpenSpec proposal/design/tasks/spec；实现范围优先是 `apps/webadmin-frontend`、API 类型复用和双跑验证，不得顺手移除 Python engine 或切换生产入口。
-- **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`；未经双跑验证和入口切换 change，不得把生产入口从 `python3 manager.py ...` 切到 TS，不得把当前 Python WebAdmin 生产链路切到 `apps/webadmin-api`。
-- **后续顺序**必须是：`packages/zclaw` → `packages/flow-engine` → `packages/self-heal` → `packages/cli` → `apps/webadmin-api` → `apps/webadmin-frontend` 整理 → 双跑切换 → 移除 Python。
+- **已完成 WebAdmin 前端整理与双跑切换准备**。已新增 `apps/webadmin-frontend`，迁移 React/Vite/antd/`@ant-design/x` 前端，复用 `packages/schemas` WebAdmin API 类型，`apps/webadmin-api` 默认托管 `apps/webadmin-frontend/dist`，并在 `docs/06-TS迁移进度与路线图.md` 记录 M7 preflight 证据。
+- **下一阶段：M7 preflight 与 Python 依赖清零**。必须先回到 `remove-python-runtime` change 复核前置证据，再按 tasks 执行 TS-only 入口切换、Python active tree 删除、文档/skill/crontab 改写和清零验证。
+- **当前禁止**迁移或替换 `engine/flow_engine.py`、`engine/self_heal.py`、`manager.py`；在 `remove-python-runtime` preflight 通过前，不得把生产入口从 `python3 manager.py ...` 切到 TS，不得删除 Python WebAdmin 后端。
+- **后续顺序**必须是：`packages/zclaw` → `packages/flow-engine` → `packages/self-heal` → `packages/cli` → `apps/webadmin-api` → `apps/webadmin-frontend` 整理 → M7 preflight/双跑切换 → 移除 Python。
 - 每个阶段必须先有 OpenSpec proposal/design/tasks/spec，再实现；改变运行契约、目录结构、命令入口或安全边界时，必须同步更新 `AGENTS.md`、README 与 `docs/`。
 - 回滚基线：M1 的 TS 工作区应可通过删除根级 Node workspace 文件与 `packages/*` 回到纯 Python 运行形态；回滚后 `python3 manager.py list` 与 `python3 manager.py validate orders_overview` 仍应可运行。
 
@@ -42,7 +43,7 @@
 
 - Python 引擎主体（`manager.py`、`engine/*.py`）保持标准库实现，不得引入 `requests`、Playwright、Selenium、Puppeteer、browser-use 等第三方依赖。
 - `webadmin/` 是隔离子工程，当前允许 FastAPI + uvicorn + SQLite，禁止引擎主体 import `webadmin` 或其第三方依赖。
-- `webadmin/frontend/` 当前是 React + Vite + TypeScript + antd + `@ant-design/x` 子工程，运行期由 WebAdmin 后端托管构建产物。
+- `webadmin/frontend/` 是旧 Python WebAdmin 子工程内的前端残留；目标态源码已迁移到 `apps/webadmin-frontend`，删除旧残留留给 M7。
 
 ### TS 目标态
 
@@ -65,6 +66,7 @@ TS 代码同样受最高安全规则约束：
 - `packages/self-heal` 不得依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge；默认单测和 baseline 必须使用 mock Agent runner、临时 data root 和固定 clock，dry-run 只生成 `data/logs/heals/<heal_id>.json` 与 `data/logs/heals/<heal_id>_prompt.md`，不得调用真实 OpenClaw/Claude/Cursor。
 - `packages/cli` 只能做命令行参数解析、命令编排、终端输出和 exit code；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则。真实工具调度只能通过 `packages/flow-engine`，自愈只能通过 `packages/self-heal`。如果 `add-typescript-flow-pacing-policy` 后续落地，CLI 只消费 flow-engine 暴露的 pacing 能力，不在 CLI 内重复实现 pacing。
 - `apps/webadmin-api` 只能做 WebAdmin HTTP/SSE API、SQLite WebAdmin 自有状态、调度器、静态前端托管和对既有 TS package 的服务编排；不得直接依赖 `packages/zclaw`，不得读取 ZClaw API key，不得直接访问 bridge，不得实现 flow DSL 或 self-heal 业务规则；默认单测和 baseline 必须使用 mock tool client、mock Agent runner、临时 data root、固定 clock 和 no-op sleeper。
+- `apps/webadmin-frontend` 只能做 WebAdmin React 前端，通过 same-origin `/api/*` 访问 `apps/webadmin-api`；不得直接访问 ZClaw bridge、不得读取 ZClaw API key、不得打开本机浏览器或引入浏览器自动化依赖。
 - 新增 TS 依赖和源码必须通过安全扫描，阻断 `playwright`、`selenium`、`puppeteer`、`browser-use`、`webbrowser`、本机浏览器打开命令和绕过 ZClaw bridge 的可疑路径。
 
 ## 你在本仓库的三种工作模式
@@ -116,7 +118,7 @@ TS 代码同样受最高安全规则约束：
 | `learnings/known_issues.json` | 已知问题库（0 tokens 修复路径） | 修复后必须回写 |
 | `data/` | 运行时数据（logs/output/backups/webadmin.db） | 只读，勿手工编辑 |
 | `webadmin/` | Web 管理界面（可选子工程） | 引擎主体禁止 import 它 |
-| `webadmin/frontend/` | 当前 WebAdmin 前端（React/Vite/TS） | 迁移到 `apps/webadmin-frontend` 前不要擅自移动 |
+| `webadmin/frontend/` | 旧 Python WebAdmin 前端残留 | M7 前不要擅自删除；目标态源码位于 `apps/webadmin-frontend` |
 | `package.json` / `pnpm-workspace.yaml` / `tsconfig.base.json` | TS monorepo 基线 | 不得改变 Python 入口语义 |
 | `packages/core/` | TS 共享基础工具 | 只允许无浏览器副作用能力；不得访问 ZClaw |
 | `packages/schemas/` | TS 契约、运行时校验、JSON Schema 导出 | 不得执行 flow、不得调用 bridge |
@@ -125,7 +127,7 @@ TS 代码同样受最高安全规则约束：
 | `packages/self-heal/` | 目标态自愈模块 | 仅在对应后续 change 中创建/修改；必须兼容 known issues 与模板 |
 | `packages/openclaw/` | 目标态 OpenClaw/Agent adapter | 不直接依赖 flow-engine |
 | `packages/cli/` | 目标态 `ziniao` CLI | 双跑切换完成前不得替换 `python3 manager.py` 生产入口 |
-| `apps/webadmin-api/` | 目标态 TS WebAdmin 后端 | 仅在对应后续 change 中创建/修改；不得直接访问 ZClaw bridge |
+| `apps/webadmin-api/` | 目标态 TS WebAdmin 后端 | 不得直接访问 ZClaw bridge；默认托管 `apps/webadmin-frontend/dist` |
 | `apps/webadmin-frontend/` | 目标态 WebAdmin 前端 | 迁移后复用 `packages/schemas` API 类型 |
 | `docs/` | 架构与规范文档 | 架构变更需同步更新 |
 
