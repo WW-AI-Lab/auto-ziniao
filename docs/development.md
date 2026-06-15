@@ -40,11 +40,11 @@ pnpm validate:baseline
 
 ## npm 打包
 
-根包不发布。发布顺序：
+只发布一个 npm 包：`@ww-ai-lab/auto-ziniao`。内部 `packages/*` 目录只作为源码模块和安全边界，不再单独发布。
 
-1. `@ww-ai-lab/auto-ziniao-core`
-2. `@ww-ai-lab/auto-ziniao-schemas`
-3. `@ww-ai-lab/auto-ziniao-zclaw`
-4. `@ww-ai-lab/auto-ziniao-flow-engine`
-5. `@ww-ai-lab/auto-ziniao-self-heal`
-6. `@ww-ai-lab/auto-ziniao`
+发布前执行：
+
+```bash
+pnpm validate:baseline
+npm pack --dry-run
+```

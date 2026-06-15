@@ -1,6 +1,7 @@
 {
   "name": "@ww-ai-lab/auto-ziniao-flow-engine",
-  "version": "0.1.2",
+  "version": "0.1.3",
+  "private": true,
   "description": "Flow loading, validation, execution, pacing and risk controls for Auto Ziniao.",
   "license": "MIT",
   "repository": {
@@ -16,17 +17,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
-  },
-  "files": [
-    "dist",
-    "!dist/.tsbuildinfo",
-    "!dist/**/*.test.*",
-    "package.json",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsc -b",

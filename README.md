@@ -10,6 +10,8 @@ Auto Ziniao 是一个基于紫鸟 ZClaw bridge 的店铺操作流程引擎。它
 npm install -g @ww-ai-lab/auto-ziniao
 ```
 
+项目只发布一个 npm 包：`@ww-ai-lab/auto-ziniao`。内部 `packages/*` 目录仅作为源码分层和安全边界，不再单独发布，也不要求用户逐个安装。
+
 本仓库开发模式：
 
 ```bash

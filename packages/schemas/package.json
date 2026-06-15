@@ -1,6 +1,7 @@
 {
   "name": "@ww-ai-lab/auto-ziniao-schemas",
-  "version": "0.1.2",
+  "version": "0.1.3",
+  "private": true,
   "description": "Zod contracts and JSON schemas for Auto Ziniao flows and WebAdmin APIs.",
   "license": "MIT",
   "repository": {
@@ -20,18 +21,6 @@
       "types": "./dist/webadmin.d.ts",
       "import": "./dist/webadmin.js"
     }
-  },
-  "files": [
-    "dist",
-    "!dist/.tsbuildinfo",
-    "!dist/**/*.test.*",
-    "json-schema",
-    "package.json",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsc -b",

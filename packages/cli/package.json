@@ -1,6 +1,7 @@
 {
-  "name": "@ww-ai-lab/auto-ziniao",
-  "version": "0.1.2",
+  "name": "@ww-ai-lab/auto-ziniao-cli-internal",
+  "version": "0.1.3",
+  "private": true,
   "description": "CLI for reusable ZClaw-based Ziniao store-operation flows.",
   "license": "MIT",
   "repository": {
@@ -30,18 +31,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
-  },
-  "files": [
-    "dist",
-    "!dist/.tsbuildinfo",
-    "!dist/**/*.test.*",
-    "!dist/bin/ziniao.*",
-    "package.json",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsc -b",

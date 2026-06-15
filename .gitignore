@@ -5,6 +5,7 @@ learnings/heals.jsonl
 
 # TypeScript workspace
 node_modules/
+dist/
 packages/*/dist/
 apps/*/dist/
 *.tgz
