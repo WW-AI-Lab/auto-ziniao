@@ -3,7 +3,7 @@
   "version": "0.1.3",
   "private": true,
   "description": "Flow loading, validation, execution, pacing and risk controls for Auto Ziniao.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",

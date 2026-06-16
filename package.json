@@ -2,7 +2,8 @@
   "name": "@ww-ai-lab/auto-ziniao",
   "version": "0.1.3",
   "description": "Workspace for Auto Ziniao, a ZClaw-based reusable store-operation flow engine.",
-  "license": "MIT",
+  "private": true,
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git"
@@ -47,10 +48,6 @@
     "README.md",
     "LICENSE"
   ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
     "build": "tsc -b packages/core packages/schemas packages/zclaw packages/flow-engine packages/self-heal packages/cli apps/api && pnpm --filter @ww-ai-lab/auto-ziniao-web build && pnpm build:npm",
     "build:npm": "rm -rf dist && esbuild packages/cli/src/index.ts packages/cli/src/bin/auto-ziniao.ts --bundle --platform=node --format=esm --target=node22 --outdir=dist --outbase=packages/cli/src --packages=bundle --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" && node -e \"require('node:fs').writeFileSync('dist/index.d.ts', 'export declare function runCli(args: string[]): Promise<number>;\\n'); require('node:fs').chmodSync('dist/bin/auto-ziniao.js', 0o755)\"",

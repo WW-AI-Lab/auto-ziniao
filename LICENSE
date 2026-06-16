@@ -1,21 +1,24 @@
-MIT License
+紫鸟自动化引擎个人/内部自用许可协议
 
 Copyright (c) 2026 WW AI Lab
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+本软件及其相关文档、源码、配置、流程定义、脚本、构建产物和其他随附材料（以下统称“软件”）仅授权给取得本软件副本的个人或组织用于个人自用或组织内部自用。
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+在遵守本协议全部条款的前提下，你可以：
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. 为个人自用或组织内部自用而查看、复制、安装、运行和备份本软件；
+2. 为个人自用或组织内部自用而修改本软件，但修改后的版本仍受本协议约束。
+
+未经 WW AI Lab 事先书面许可，你不得：
+
+1. 将本软件或其任何部分直接用于商业目的，包括但不限于收费服务、SaaS、托管服务、外包交付、客户项目、商业运营、销售、出租、转售或其他营利性使用；
+2. 修改、改编、二次开发、合并、封装或制作衍生作品后，将其用于商业目的；
+3. 向第三方分发、发布、再授权、出售、转让、出租、托管或提供本软件、修改版本或衍生作品；
+4. 移除、隐藏或更改本协议、版权声明或其他权利声明；
+5. 绕过本软件中与紫鸟 ZClaw bridge、权限、安全边界或运行限制相关的保护措施。
+
+本协议未明示授予的任何权利均由 WW AI Lab 保留。本协议不授予任何商标、服务标识、品牌名称、专利或其他知识产权许可。
+
+本软件按“现状”提供，不附带任何明示或默示担保，包括但不限于适销性、特定用途适用性、非侵权性、可用性、准确性或连续运行的担保。在适用法律允许的最大范围内，作者或权利人不对因使用、无法使用、修改、分发或依赖本软件而产生的任何索赔、损失、责任或其他后果承担责任。
+
+如需商业使用、对外分发、二次开发交付、托管服务或其他超出本协议范围的授权，请提前取得 WW AI Lab 的书面许可。

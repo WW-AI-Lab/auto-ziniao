@@ -3,7 +3,7 @@
   "version": "0.1.3",
   "private": true,
   "description": "Self-heal trigger, prompt and known-issue logic for Auto Ziniao.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WW-AI-Lab/auto-ziniao.git",
